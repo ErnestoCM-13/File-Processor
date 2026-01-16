@@ -1,0 +1,6 @@
+2024-02-28 14:00:00 [INFO] [AUTH] User login successful
+Esto es una línea de texto basura que no debería estar aquí
+2024-02-28 14:05:00 [ERROR] [DB] Connection lost
+02/28/2024 14:10:00 [WARN] [SYS] High memory usage
+2024-02-28 14:15:00 [FATAL] [KERNEL] Panic!
+[DEBUG] [APP] Missing date and time at start

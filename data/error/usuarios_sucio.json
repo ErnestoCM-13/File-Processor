@@ -1,0 +1,20 @@
+{
+    "usuarios": [
+        { "id": "ABC", "nombre": "Juan", "activo": true },
+        { "id": 2, "nombre": 123, "activo": false }
+    ],
+    "sesiones": [
+        {
+            "usuario_id": 1,
+            "inicio": "2024-01-01T10:00:00Z",
+            "duracion_segundos": -500,
+            "paginas_visitadas": 5
+        },
+        {
+            "usuario_id": 2,
+            "inicio": "2024-01-01T11:00:00Z",
+            "duracion_segundos": "mucha",
+            "paginas_visitadas": 2
+        }
+    ]
+}

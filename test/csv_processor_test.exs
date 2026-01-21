@@ -1,22 +1,51 @@
 defmodule FileProcessor.CsvProcessorTest do
   use ExUnit.Case
 
-  test "processes valid CSV and returns correct core metrics" do
-    {:ok, metrics} =
-      FileProcessor.CsvProcessor.process("data/valid/ventas_enero.csv")
-
-    assert metrics.processed_lines == 30
-    assert metrics.unique_products > 0
-    assert metrics.total_sales > 0
-    assert metrics.errors_found == 0
+  setup do
+    %{
+      valid_csv: "data/valid/ventas_enero.csv",
+      error_csv: "data/error/ventas_corrupto.csv"
+    }
   end
 
-  test "processes corrupted CSV and reports parsing errors" do
-    {:ok, metrics} =
-      FileProcessor.CsvProcessor.process("data/error/ventas_corrupto.csv")
+  describe "process/1 with valid files" do
+    test "returns metrics with the exact expected values", %{valid_csv: valid_csv} do
+      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
 
-    assert metrics.processed_lines > 0
-    assert metrics.errors_found > 0
-    assert length(metrics.error_details) == metrics.errors_found
+      assert metrics.total_sales == 24399.93
+      assert metrics.unique_products == 15
+      assert metrics.average_discount == 12.0
+      assert metrics.top_product == "Cable HDMI (40 units)"
+      assert metrics.top_category == "Computadoras ($10289.91)"
+      assert metrics.date_range == "2024-01-02 to 2024-01-30"
+      assert metrics.processed_lines == 30
+      assert metrics.errors_found == 0
+      assert metrics.error_details == []
+    end
+  end
+
+  describe "process/1 with error files" do
+    test "skip invalid lines and collects their errors", %{error_csv: error_csv} do
+      {:ok, metrics} = FileProcessor.CsvProcessor.process(error_csv)
+
+      assert metrics.total_sales == 1927.95
+      assert metrics.unique_products == 3
+      assert metrics.average_discount == 10.0
+      assert metrics.top_product == "Tablet Samsung (3 units)"
+      assert metrics.top_category == "Tablets ($1619.97)"
+      assert metrics.date_range == "2024-03-01 to 2024-03-05"
+      assert metrics.processed_lines == 3
+      assert metrics.errors_found == 8
+      assert metrics.error_details == [
+        "line 2: Invalid price",
+        "line 3: Invalid quantity",
+        "line 4: Invalid quantity",
+        "line 5: Corrupt line (missing columns)",
+        "line 6: Invalid price",
+        "line 7: Discount out of range (0-100)",
+        "line 8: Corrupt line (missing columns)",
+        "line 11: Invalid date format"
+        ]
+    end
   end
 end

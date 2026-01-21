@@ -142,7 +142,7 @@ defmodule FileProcessor.LogProcessor do
   end
 
   @doc false
-  # Converts the level map into a string of percentages (e.g., "INFO: 70%, ERROR: 10%")
+  # Converts the level map into a list of percentages (e.g., ["INFO: 70%", "ERROR: 10%"])
   defp calculate_distribution(_levels, 0), do: "None"
   defp calculate_distribution(levels, total_entries) do
     levels
@@ -150,7 +150,6 @@ defmodule FileProcessor.LogProcessor do
       percent = Float.round((count / total_entries) * 100, 1)
       "#{level}: #{percent}%"
     end)
-    |> Enum.join(", ")
   end
 
   @doc false

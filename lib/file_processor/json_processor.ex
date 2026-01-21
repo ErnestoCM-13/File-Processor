@@ -190,7 +190,7 @@ defmodule FileProcessor.JsonProcessor do
       avg_session_duration: Float.round(avg_duration, 2),
       total_pages_visited: accumulator.total_pages,
       top_5_actions: top_actions,
-      peak_hour: "#{peak_hour}:00",
+      peak_hour: "#{peak_hour}",
       total_sessions: accumulator.total_sessions,
       errors_found: length(accumulator.data_errors),
       error_details: Enum.reverse(accumulator.data_errors)

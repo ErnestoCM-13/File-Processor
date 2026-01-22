@@ -29,7 +29,7 @@ defmodule FileProcessor.Report do
       |> Enum.join("\n")
 
     case File.write(output_path, content) do
-      :ok -> {:ok, "Report generated succesfully: #{output_path}"}
+      :ok -> {:ok, "Report generated successfully: #{output_path}"}
       {:error, reason} -> {:error, "Error writing report: #{reason}"}
     end
   end

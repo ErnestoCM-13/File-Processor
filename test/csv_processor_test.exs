@@ -8,6 +8,44 @@ defmodule FileProcessor.CsvProcessorTest do
     }
   end
 
+  describe "process/1" do
+    test "returns a two-element tuple with :ok and a map", %{valid_csv: valid_csv} do
+      assert {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      assert is_map(metrics)
+    end
+
+    test "returns a map with expected keys", %{valid_csv: valid_csv} do
+      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      expected_keys = [
+        :total_sales,
+        :unique_products,
+        :average_discount,
+        :top_product,
+        :top_category,
+        :date_range,
+        :processed_lines,
+        :errors_found,
+        :error_details
+      ]
+
+      assert Enum.sort(Map.keys(metrics)) == Enum.sort(expected_keys)
+    end
+
+    test "returns metrics with the correct data type", %{valid_csv: valid_csv} do
+      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+
+      assert is_float(metrics.total_sales)
+      assert is_integer(metrics.unique_products)
+      assert is_float(metrics.average_discount)
+      assert is_binary(metrics.top_product)
+      assert is_binary(metrics.top_category)
+      assert is_binary(metrics.date_range)
+      assert is_integer(metrics.processed_lines)
+      assert is_integer(metrics.errors_found)
+      assert is_list(metrics.error_details)
+    end
+  end
+
   describe "process/1 with valid files" do
     test "returns metrics with the exact expected values", %{valid_csv: valid_csv} do
       {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)

@@ -28,12 +28,14 @@ defmodule Parallel.Coordinator do
   def init(files, parent_pid, config) do
     total_files = length(files)
     timeout = Map.get(config, :timeout, @default_timeout)
+    worker_module = Map.get(config, :worker_module, Parallel.Worker)
 
     state = %{
       total: total_files,
       completed: 0,
       parent: parent_pid,
-      workers: %{}
+      workers: %{},
+      worker_module: worker_module
     }
 
     grouped_metrics = FileProcessor.set_initial_metrics_map()
@@ -50,8 +52,7 @@ defmodule Parallel.Coordinator do
   defp spawn_workers(files, state) do
     workers_map =
       Enum.reduce(files, %{}, fn file, acc ->
-        # Usamos spawn_monitor para obtener el PID y la referencia de monitoreo
-        {pid, _ref} = spawn_monitor(Parallel.Worker, :init, [file, self()])
+        {pid, _ref} = spawn_monitor(state.worker_module, :init, [file, self()])
         Map.put(acc, pid, file)
       end)
 
@@ -91,6 +92,7 @@ defmodule Parallel.Coordinator do
           state.workers
           |> Map.values()
           |> Enum.reduce(grouped_metrics, fn file, acc ->
+            IO.puts("Error: Worker for #{Path.basename(file)} take too long")
             FileProcessor.update_metrics_map(acc, {:error, Path.basename(file), "Timeout exceeded"})
           end)
 

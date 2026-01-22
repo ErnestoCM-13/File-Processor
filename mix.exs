@@ -8,7 +8,8 @@ defmodule FileProcessor.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      escript: escript()
+      escript: escript(),
+      elixirc_paths: elixirc_paths(Mix.env())
     ]
   end
 
@@ -33,4 +34,8 @@ defmodule FileProcessor.MixProject do
   defp escript do
     [main_module: FileProcessor.Executable]
   end
+
+  # Compiles test/support in tests
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end

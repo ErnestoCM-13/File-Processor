@@ -4,6 +4,11 @@ defmodule Parallel.CoordinatorTest do
   setup do
     %{
       valid_file: ["data/valid/ventas_febrero.csv"],
+      multiple_files: [
+        "data/valid/ventas_febrero.csv",
+        "data/valid/usuarios.json",
+        "data/valid/aplicacion.log"
+      ],
       crash_config: %{worker_module: TestSupport.CrashingWorker},
       never_ending_config: %{worker_module: TestSupport.NeverEndingWorker, timeout: 50}
     }
@@ -33,6 +38,14 @@ defmodule Parallel.CoordinatorTest do
 
       assert_receive {:all_done, results}, 1_000
       assert results.processes_used == 1
+      assert results.errors == []
+    end
+
+    test "coordinator processes multiple files correctly", %{multiple_files: files} do
+      Parallel.Coordinator.start(files, self(), %{})
+
+      assert_receive {:all_done, results}, 1_000
+      assert results.processes_used == length(files)
       assert results.errors == []
     end
   end

@@ -14,8 +14,9 @@ defmodule FileProcessor.Report do
   2. Builds the report content sequentially: Header -> Metrics -> Errors.
   3. Writes the content to a `.txt` file with a timestamp in the name.
   """
-  def generate({mode, results}) when is_map(results) do
-    output_path = "output/final_report_#{mode}_#{NaiveDateTime.local_now()}.txt"
+  def generate({mode, results}, config \\ %{}) when is_map(results) do
+    report_name_label = Map.get(config, :report_name_label) || NaiveDateTime.local_now()
+    output_path = "output/final_report_#{mode}_#{report_name_label}.txt"
     Path.dirname(output_path) |> File.mkdir_p!()
     sections_to_process = [:csv, :json, :log]
 
@@ -196,23 +197,23 @@ defmodule FileProcessor.Report do
   end
 
   defp format_entry(%{file: file, metrics: metrics}, :json) do
+    formatted_top_actions = format_list(metrics.top_5_actions)
     [
       "[File: #{file}]",
       "  * Registered users: #{metrics.total_users}",
       "  * Active users: #{metrics.active_users} (#{metrics.active_percent}%)",
       "  * Avg session duration: #{metrics.avg_session_duration}",
       "  * Total pages visited: #{metrics.total_pages_visited}",
-      "  * Top 5 actions:",
-      "    - #{metrics.top_5_actions}"
+      "  * Top 5 actions: \n#{formatted_top_actions}"
     ]
   end
 
   defp format_entry(%{file: file, metrics: metrics}, :log) do
+    formatted_level_distribution = format_list(metrics.level_distribution)
     [
       "[File: #{file}]",
       "  * Total entries: $#{metrics.total_entries}",
-      "  * Level distribution:",
-      "    - #{metrics.level_distribution}",
+      "  * Level distribution: \n#{formatted_level_distribution}",
       "  * Most problematic component: #{metrics.most_problematic_component}",
       "  * Frequent error pattern: #{metrics.frequent_error_pattern}"
     ]
@@ -225,6 +226,12 @@ defmodule FileProcessor.Report do
     |> Atom.to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
+  end
+
+  defp format_list(list) do
+    list
+    |> Enum.map(&"      - #{&1}")
+    |> Enum.join("\n")
   end
 
   @doc false

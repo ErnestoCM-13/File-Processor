@@ -40,7 +40,7 @@ defmodule FileProcessor do
         Parallel.Coordinator.start(path_list, self(), config)
 
         receive do
-          {:all_done, results} -> FileProcessor.Report.generate({:parallel, results})
+          {:all_done, results} -> FileProcessor.Report.generate({:parallel, results}, config)
         end
 
       :sequential ->
@@ -48,7 +48,7 @@ defmodule FileProcessor do
           set_initial_metrics_map()
           |> process_paths(path_list)
 
-        FileProcessor.Report.generate({:sequential, results})
+        FileProcessor.Report.generate({:sequential, results}, config)
 
       :benchmark ->
         {sequential_metrics, _} =
@@ -66,7 +66,7 @@ defmodule FileProcessor do
 
         final_results = Map.put(parallel_results, :performance, performance)
 
-        FileProcessor.Report.generate({:benchmark, final_results})
+        FileProcessor.Report.generate({:benchmark, final_results}, config)
     end
   end
 
@@ -102,7 +102,7 @@ defmodule FileProcessor do
   end
 
   # Error clause for invalid data type.
-  def process_path(path), do: {:error, Path.basename(path), "Invalid argument, expected a string path"}
+  def process_path(path), do: {:error, path, "Invalid argument, expected a string path"}
 
   @doc """
   Initializes the data structure to store metrics.

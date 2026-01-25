@@ -48,12 +48,12 @@ defmodule FileProcessorTest do
 
   describe "process_path" do
     test "handles non existent file paths", %{non_existent_file: non_existent_file} do
-      assert {:error, _file_name, reason} = FileProcessor.process_path(non_existent_file)
+      assert {:error, _file_name, reason} = FileProcessor.process_single_file(non_existent_file)
       assert reason == "File not found"
     end
 
     test "handles non string arguments" do
-      assert {:error, _file_name, reason} = FileProcessor.process_path(:file)
+      assert {:error, _file_name, reason} = FileProcessor.process_single_file(:file)
       assert reason == "Invalid argument, expected a string path"
     end
   end

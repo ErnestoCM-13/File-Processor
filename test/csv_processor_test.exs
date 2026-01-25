@@ -8,14 +8,14 @@ defmodule FileProcessor.CsvProcessorTest do
     }
   end
 
-  describe "process/1" do
+  describe "process_csv_file/1" do
     test "returns a two-element tuple with :ok and a map", %{valid_csv: valid_csv} do
-      assert {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      assert {:ok, metrics} = FileProcessor.CsvProcessor.process_csv_file(valid_csv)
       assert is_map(metrics)
     end
 
     test "returns a map with expected keys", %{valid_csv: valid_csv} do
-      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      {:ok, metrics} = FileProcessor.CsvProcessor.process_csv_file(valid_csv)
       expected_keys = [
         :total_sales,
         :unique_products,
@@ -32,7 +32,7 @@ defmodule FileProcessor.CsvProcessorTest do
     end
 
     test "returns metrics with the correct data type", %{valid_csv: valid_csv} do
-      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      {:ok, metrics} = FileProcessor.CsvProcessor.process_csv_file(valid_csv)
 
       assert is_float(metrics.total_sales)
       assert is_integer(metrics.unique_products)
@@ -46,9 +46,9 @@ defmodule FileProcessor.CsvProcessorTest do
     end
   end
 
-  describe "process/1 with valid files" do
+  describe "process_csv_file/1 with valid files" do
     test "returns metrics with the exact expected values", %{valid_csv: valid_csv} do
-      {:ok, metrics} = FileProcessor.CsvProcessor.process(valid_csv)
+      {:ok, metrics} = FileProcessor.CsvProcessor.process_csv_file(valid_csv)
 
       assert metrics.total_sales == 24399.93
       assert metrics.unique_products == 15
@@ -62,9 +62,9 @@ defmodule FileProcessor.CsvProcessorTest do
     end
   end
 
-  describe "process/1 with error files" do
+  describe "process_csv_file/1 with error files" do
     test "skip invalid lines and collects their errors", %{error_csv: error_csv} do
-      {:ok, metrics} = FileProcessor.CsvProcessor.process(error_csv)
+      {:ok, metrics} = FileProcessor.CsvProcessor.process_csv_file(error_csv)
 
       assert metrics.total_sales == 1927.95
       assert metrics.unique_products == 3

@@ -14,9 +14,9 @@ defmodule Parallel.CoordinatorTest do
     }
   end
 
-  describe "start/3" do
+  describe "start_parallel_processing/3" do
     test "coordinator handles worker crash and collects their error", %{valid_file: valid_file, crash_config: config} do
-      Parallel.Coordinator.start(valid_file, self(), config)
+      Parallel.Coordinator.start_parallel_processing(valid_file, self(), config)
 
       assert_receive {:all_done, results}, 1_000
       assert results.processes_used == 1
@@ -25,7 +25,7 @@ defmodule Parallel.CoordinatorTest do
     end
 
     test "coordinator handles workers that exceed timeout and collects their error", %{valid_file: valid_file, never_ending_config: config} do
-      Parallel.Coordinator.start(valid_file, self(), config)
+      Parallel.Coordinator.start_parallel_processing(valid_file, self(), config)
 
       assert_receive {:all_done, results}, 200
       assert results.processes_used == 1
@@ -34,7 +34,7 @@ defmodule Parallel.CoordinatorTest do
     end
 
     test "coordinator process valid files successfully", %{valid_file: valid_file} do
-      Parallel.Coordinator.start(valid_file, self(), %{})
+      Parallel.Coordinator.start_parallel_processing(valid_file, self(), %{})
 
       assert_receive {:all_done, results}, 1_000
       assert results.processes_used == 1
@@ -42,7 +42,7 @@ defmodule Parallel.CoordinatorTest do
     end
 
     test "coordinator processes multiple files correctly", %{multiple_files: files} do
-      Parallel.Coordinator.start(files, self(), %{})
+      Parallel.Coordinator.start_parallel_processing(files, self(), %{})
 
       assert_receive {:all_done, results}, 1_000
       assert results.processes_used == length(files)

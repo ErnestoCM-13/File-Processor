@@ -1,111 +1,153 @@
 defmodule FileProcessor do
   @moduledoc """
-  Main module for the file processor.
-  It is responsible for:
-  1. Finding files (via `directories` or explicit `lists`).
-  2. Classifying by file extension.
-  3. Applying the execution mode (`Sequential`, `Parallel`, or `Benchmark`).
-  4. Receiving metrics from processed files.
-  5. Sending them to the report generator.
+  Central orchestrator for the file processing system.
+
+  It is responsible for coordinating the full lifecycle of file processing:
+  - Finding files (from a `directory` or an explicit `lists`).
+  - Determining how each file should be processed based on its extension.
+  - Executing the processing flow according to the selected execution mode
+    (`Sequential`, `Parallel`, or `Benchmark`).
+  - Collecting metrics and errors produced during processing.
+  - Sending them to the report generator.
   """
 
-  # --- PUBLIC API ---
+  # ----------------------------------------------------------------------
+  # PUBLIC API
+  # ----------------------------------------------------------------------
 
   @doc """
-  Main entry point. Starts processing according to the execution mode.
+  Entry point of the file processing system.
 
   ## Parameters
-  - `mode`: An atom that determines the execution mode (`:parallel`, `:sequential`, `:benchmark`).
-  - `source_type`: An atom that defines whether the third argument is a `:directory` or a `:list` of paths.
-  - `path` or `path_list`: A string containing the directory path or a list of strings containing file paths.
-  - `config`: Map containing runtime configurations
+  - `execution_mode`:
+      An atom that determines how files are processed.
+      Expected values: `:parallel`, `:sequential`, `:benchmark`.
+  - `source_type`:
+      An atom that indicates how file paths are provided.
+      Expected values: `:directory` or `:list`.
+  - `directory_path` or `path_list`:
+      A directory path (string) when `source_type` is `:directory`,
+      or a list of file paths (strings) when `source_type` is `:list`.
+  - `runtime_config`:
+      Configuration map used during processing and report generation.
   """
-  def process_files(mode, :directory, path, config) when is_binary(path) do
-    case File.dir?(path) do
+  def process_files(execution_mode, :directory, directory_path, runtime_config) when is_binary(directory_path) do
+    case File.dir?(directory_path) do
       true ->
         path_list =
-          path
+          directory_path
           |> File.ls!()
-          |> Enum.map(&Path.join(path, &1))
+          |> Enum.map(&Path.join(directory_path, &1))
 
-        process_files(mode, :list, path_list, config)
+        process_files(execution_mode, :list, path_list, runtime_config)
 
       false -> {:error, "Directory not found"}
     end
   end
 
-  def process_files(mode, :list, path_list, config) when is_list(path_list) do
-    case mode do
-      :parallel ->
-        Parallel.Coordinator.start(path_list, self(), config)
-
-        receive do
-          {:all_done, results} -> FileProcessor.Report.generate({:parallel, results}, config)
-        end
-
+  def process_files(execution_mode, :list, path_list, runtime_config) when is_list(path_list) do
+    case execution_mode do
       :sequential ->
-        results =
-          set_initial_metrics_map()
-          |> process_paths(path_list)
+        process_files_sequentially(path_list, runtime_config)
 
-        FileProcessor.Report.generate({:sequential, results}, config)
+      :parallel ->
+        process_files_in_parallel(path_list, runtime_config)
 
       :benchmark ->
-        {sequential_metrics, _} =
-          Benchmark.measure(fn ->
-            set_initial_metrics_map() |> process_paths(path_list)
-          end)
-
-        {parallel_metrics, parallel_results} =
-          Benchmark.measure(fn ->
-            Parallel.Coordinator.start(path_list, self(), config)
-            receive do: ({:all_done, results} -> results)
-          end)
-
-        performance = Benchmark.calculate_performance(sequential_metrics, parallel_metrics)
-
-        final_results = Map.put(parallel_results, :performance, performance)
-
-        FileProcessor.Report.generate({:benchmark, final_results}, config)
+        process_files_with_benchmark(path_list, runtime_config)
     end
   end
 
   # Error clauses for invalid data type
-  def process_files(_mode, :directory, _path), do: {:error, "Invalid argument, expected a string path"}
-  def process_files(_mode, :list, _path_list), do: {:error, "Invalid argument, expected a paths list"}
+  def process_files(_execution_mode, :directory, _path), do: {:error, "Invalid argument, expected a string path"}
+  def process_files(_execution_mode, :list, _path_list), do: {:error, "Invalid argument, expected a paths list"}
 
-  # --- INTERNAL LOGIC ---
+  # ----------------------------------------------------------------------
+  # EXECUTION MODES
+  # ----------------------------------------------------------------------
+
+  defp process_files_sequentially(path_list, runtime_config) do
+    results =
+      set_initial_metrics_map()
+      |> process_path_list(path_list)
+
+    FileProcessor.Report.generate({:sequential, results}, runtime_config)
+  end
+
+  defp process_files_in_parallel(path_list, runtime_config) do
+    Parallel.Coordinator.start_parallel_processing(path_list, self(), runtime_config)
+
+    receive do
+      {:all_done, results} -> FileProcessor.Report.generate({:parallel, results}, runtime_config)
+    end
+  end
+
+  defp process_files_with_benchmark(path_list, runtime_config) do
+    {sequential_metrics, _} =
+      Benchmark.measure(fn ->
+        set_initial_metrics_map()
+        |> process_path_list(path_list)
+      end)
+
+    {parallel_metrics, parallel_results} =
+      Benchmark.measure(fn ->
+        Parallel.Coordinator.start_parallel_processing(path_list, self(), runtime_config)
+        receive do: ({:all_done, results} -> results)
+      end)
+
+    performance = Benchmark.calculate_performance(sequential_metrics, parallel_metrics)
+
+    final_results = Map.put(parallel_results, :performance, performance)
+
+    FileProcessor.Report.generate({:benchmark, final_results}, runtime_config)
+  end
+
+  # ----------------------------------------------------------------------
+  # SEQUENTIAL PROCESSING LOGIC
+  # ----------------------------------------------------------------------
 
   @doc false
   # Recursive function to iterate through the path list for the sequential mode
-  defp process_paths(grouped_metrics, []), do: grouped_metrics
+  defp process_path_list(acumulated_metrics, []), do: acumulated_metrics
 
-  defp process_paths(grouped_metrics, [head_path | tail]) do
-    result = process_path(head_path)
-    new_grouped_metrics = update_metrics_map(grouped_metrics, result)
+  defp process_path_list(acumulated_metrics, [current_path | remaining_paths]) do
+    result = process_single_file(current_path)
+    updated_metrics = update_metrics_map(acumulated_metrics, result)
 
-    process_paths(new_grouped_metrics, tail)
+    process_path_list(updated_metrics, remaining_paths)
   end
 
+  # ----------------------------------------------------------------------
+  # FILE PROCESSING LOGIC
+  # ----------------------------------------------------------------------
+
   @doc """
-  Validates file existence and dispatches its processing based on the file extension.
+  Validates file existence and dispatches it to the correct processor
+  based on the file extension.
   """
-  def process_path(path) when is_binary(path) do
-    case File.exists?(path) do
+  def process_single_file(file_path) when is_binary(file_path) do
+    case File.exists?(file_path) do
       true ->
-        extension = path |> Path.extname() |> String.downcase()
+        file_path
+        |> Path.extname()
+        |> String.downcase()
+        |> dispatch_file_by_extension(file_path)
 
-        dispatch_file(extension, path)
-
-      false -> {:error, Path.basename(path), "File not found"}
+      false ->
+        {:error, Path.basename(file_path), "File not found"}
     end
   end
 
   # Error clause for invalid data type.
-  def process_path(path), do: {:error, path, "Invalid argument, expected a string path"}
+  def process_single_file(invalid_path), do: {:error, invalid_path, "Invalid argument, expected a string path"}
+
+  # ----------------------------------------------------------------------
+  # METRICS HANDLING
+  # ----------------------------------------------------------------------
 
   @doc """
-  Initializes the data structure to store metrics.
+  Initializes the base structure used to accumulate processing results.
+  Each key represents a supported file type, plus a shared error collection.
   """
   def set_initial_metrics_map do
     %{
@@ -117,47 +159,65 @@ defmodule FileProcessor do
   end
 
   @doc """
-  Update the accumulator metrics, adding results or errors.
+  Update the accumulated metrics structurewith the result of a processed file.
   """
-  def update_metrics_map(grouped_metrics, {:ok, type, file, metrics}) do
-    Map.update!(grouped_metrics, type, fn list ->
-      [%{file: file, metrics: metrics, internal_errors: Map.get(metrics, :error_lines, [])} | list]
+  def update_metrics_map(acumulated_metrics, {:ok, file_type, file_name, metrics}) do
+    Map.update!(acumulated_metrics, file_type, fn results ->
+      [%{
+        file: file_name,
+        metrics: metrics,
+        internal_errors: Map.get(metrics, :error_lines, [])
+      } | results]
     end)
   end
 
-  def update_metrics_map(grouped_metrics, {:error, file, reason}) do
-    Map.update!(grouped_metrics, :errors, fn list ->
-      [%{file: file, reason: reason} | list]
+  def update_metrics_map(acumulated_metrics, {:error, file_name, reason}) do
+    Map.update!(acumulated_metrics, :errors, fn errors ->
+      [%{
+        file: file_name,
+        reason: reason
+      } | errors]
     end)
   end
 
-  # --- DISPATCH FUNCTIONS ---
+  # ----------------------------------------------------------------------
+  # FILE TYPE DISPATCHING LOGIC
+  # ----------------------------------------------------------------------
 
   @doc false
   # These functions connect to specialized processing modules.
-  defp dispatch_file(".csv", path) do
-    case FileProcessor.CsvProcessor.process(path) do
-      {:ok, metrics} -> {:ok, :csv, Path.basename(path), metrics}
-      {:error, reason} -> {:error, Path.basename(path), reason}
+  defp dispatch_file_by_extension(".csv", file_path) do
+    case FileProcessor.CsvProcessor.process_csv_file(file_path) do
+      {:ok, metrics} ->
+        {:ok, :csv, Path.basename(file_path), metrics}
+
+      {:error, reason} ->
+        {:error, Path.basename(file_path), reason}
     end
   end
 
-  defp dispatch_file(".json", path) do
-    case FileProcessor.JsonProcessor.process(path) do
-      {:ok, metrics} -> {:ok, :json, Path.basename(path), metrics}
-      {:error, reason} -> {:error, Path.basename(path), reason}
+  defp dispatch_file_by_extension(".json", file_path) do
+    case FileProcessor.JsonProcessor.process_json_file(file_path) do
+      {:ok, metrics} ->
+        {:ok, :json, Path.basename(file_path), metrics}
+
+      {:error, reason} ->
+        {:error, Path.basename(file_path), reason}
     end
   end
 
-  defp dispatch_file(".log", path) do
-    case FileProcessor.LogProcessor.process(path) do
-      {:ok, metrics} -> {:ok, :log, Path.basename(path), metrics}
-      {:error, reason} -> {:error, Path.basename(path), reason}
+  defp dispatch_file_by_extension(".log", file_path) do
+    case FileProcessor.LogProcessor.process_log_files(file_path) do
+      {:ok, metrics} ->
+        {:ok, :log, Path.basename(file_path), metrics}
+
+      {:error, reason} ->
+        {:error, Path.basename(file_path), reason}
     end
   end
 
-  # Error clause unsupported file extensions.
-  defp dispatch_file(_extension, path) do
-    {:error, Path.basename(path), "Unsupported file type, expected files with extension .csv, .json or .log"}
+  # Error clause for unsupported file extensions.
+  defp dispatch_file_by_extension(_extension, file_path) do
+    {:error, Path.basename(file_path), "Unsupported file type. Expected files with extension .csv, .json or .log"}
   end
 end

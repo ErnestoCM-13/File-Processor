@@ -9,14 +9,14 @@ defmodule FileProcessor.JsonProcessorTest do
     }
   end
 
-  describe "process/1" do
+  describe "process_json_file/1" do
     test "returns a two-element tuple with :ok and a map", %{valid_json: valid_json} do
-      assert {:ok, metrics} = FileProcessor.JsonProcessor.process(valid_json)
+      assert {:ok, metrics} = FileProcessor.JsonProcessor.process_json_file(valid_json)
       assert is_map(metrics)
     end
 
     test "returns a map with expected keys", %{valid_json: valid_json} do
-      {:ok, metrics} = FileProcessor.JsonProcessor.process(valid_json)
+      {:ok, metrics} = FileProcessor.JsonProcessor.process_json_file(valid_json)
       expected_keys = [
         :total_users,
         :active_users,
@@ -34,7 +34,7 @@ defmodule FileProcessor.JsonProcessorTest do
     end
 
     test "returns metrics with the correct data type", %{valid_json: valid_json} do
-      {:ok, metrics} = FileProcessor.JsonProcessor.process(valid_json)
+      {:ok, metrics} = FileProcessor.JsonProcessor.process_json_file(valid_json)
 
       assert is_integer(metrics.total_users)
       assert is_integer(metrics.active_users)
@@ -49,9 +49,9 @@ defmodule FileProcessor.JsonProcessorTest do
     end
   end
 
-  describe "process/1 with valid files" do
+  describe "process_json_file/1 with valid files" do
     test "returns metrics with the exact expected values", %{valid_json: valid_json} do
-      {:ok, metrics} = FileProcessor.JsonProcessor.process(valid_json)
+      {:ok, metrics} = FileProcessor.JsonProcessor.process_json_file(valid_json)
 
       assert metrics.total_users == 10
       assert metrics.active_users == 7
@@ -72,9 +72,9 @@ defmodule FileProcessor.JsonProcessorTest do
     end
   end
 
-  describe "process/1 with error files" do
+  describe "process_json_file/1 with error files" do
     test "skip invalid JSON entries and collects their errors", %{error_json: error_json} do
-      {:ok, metrics} = FileProcessor.JsonProcessor.process(error_json)
+      {:ok, metrics} = FileProcessor.JsonProcessor.process_json_file(error_json)
 
       assert metrics.total_users == 0
       assert metrics.active_users == 0
@@ -94,7 +94,7 @@ defmodule FileProcessor.JsonProcessorTest do
     end
 
     test "Handles a malformed JSON file and returns an error tuple", %{malformed_json: malformed_json} do
-      assert {:error, reason} = FileProcessor.JsonProcessor.process(malformed_json)
+      assert {:error, reason} = FileProcessor.JsonProcessor.process_json_file(malformed_json)
       assert reason == "Malformed JSON file"
     end
   end

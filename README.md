@@ -152,6 +152,20 @@ The executable file_processor supports the following flags:
 - `-b, --benchmark`: Run both modes and compare performance.
 - `-t, --timeout <ms>`: Set processing timeout (default: 10000ms).
 
+### Examples:
+- Process `data/valid/ventas.csv` file in sequentiall mode
+  ```bash
+  ./file_processor -f data/valid/ventas.csv
+  ```
+- Process `data/valid/usuarios.json` and `data/error/sistema_corrupto.log` files in parallel mode
+  ```bash
+  ./file_processor --files data/valid/usuarios.json data/error/sistema_corrupto.log -p
+    ```
+- Process `data/valid` directory in benchmark mode
+  ```bash
+  ./file_processor -d data/valid -b
+  ```
+
 ---
 
 ## Testing

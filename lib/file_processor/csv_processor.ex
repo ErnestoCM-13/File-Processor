@@ -1,70 +1,96 @@
 defmodule FileProcessor.CsvProcessor do
   @moduledoc """
-  Specialized processor for CSV files, delegated by `FileProcessor`.
-  Extracts data and calculates metrics using `NimbleCSV`.
-  Calculated metrics:
-  - total sales
-  - unique products
-  - average discount
-  - top product
-  - top category
-  - date range
-  - processed lines
+  Specialized processor for CSV files.
+  This module is delegated by `FileProcessor` when a `.csv` file is detected.
+  It reads the file line by line using `NimbleCSV`, validates and parses each row,
+  accumulates data, and calculates metrics.
+
+  ## Expected CSV colums:
+  1. Date (YYYY-MM-DD)
+  2. Product name
+  3. Category
+  4. Unit price
+  5. Quantity sold
+  6. Discount percentage
+
+  ## Calculated metrics:
+  - Total sales (after discounts)
+  - Number of unique products
+  - Average discount applied
+  - Top-selling product
+  - Top-selling category
+  - Date range
+  - Total processed lines
+  - Error count and details
   """
 
-  # Defines the parse settings: "," as the separator and "°" as the escape character
-  NimbleCSV.define(MyParser, separator: ",", escape: "°")
+  # CSV parser configuration:
+  # - "," as column separator
+  # - "°" as escape character
+  NimbleCSV.define(CsvParser, separator: ",", escape: "°")
+
+  # ----------------------------------------------------------------------
+  # PUBLIC API
+  # ----------------------------------------------------------------------
 
   @doc """
   Entry point for the module.
-  Processes a CSV file and returns a map of calculated metrics.
+  Processes a CSV file and returns a map containing calculated metrics.
 
-  ## Data flow
-  1. File stream
-  2. Line parsing
-  3. Data accumulation
-  4. Metrics calculation.
+  ## Processing flow
+  1. Stream file contents
+  2. Parse CSV file rows
+  3. Validate and accumulate row data
+  4. Calcule final metrics
   """
-  def process(path) do
-    lines =
-      path
+  def process_csv_file(csv_file_path) do
+    parsed_lines =
+      csv_file_path
       |> File.stream!()
-      |> MyParser.parse_stream()
+      |> CsvParser.parse_stream()
       |> Enum.to_list()
 
     metrics =
-      set_initial_accumulator()
-      |> process_lines(lines, 1)
-      |> finalize_metrics()
+      set_initial_metrics_accumulator()
+      |> process_lines(parsed_lines, 1)
+      |> build_final_metrics()
 
     {:ok, metrics}
   end
 
+  # ----------------------------------------------------------------------
+  # METRICS ACUMULATOR INITIALIZATION
+  # ----------------------------------------------------------------------
+
   @doc false
   # Initializes the data accumulator with default values for CSV metrics.
-  defp set_initial_accumulator() do
+  defp set_initial_metrics_accumulator() do
     %{
       total_sales: 0.0,
-      products: MapSet.new(),
+      unique_products: MapSet.new(),
       discounts: [],
       product_stats: %{},  # %{"product_name" => total_quantity}
       category_stats: %{}, # %{"category" => total_sales}
-      min_date: nil,
-      max_date: nil,
-      processed_lines: 0,
+      earliest_date: nil,
+      latest_date: nil,
+      processed_lines_count: 0,
       error_lines: []
     }
   end
 
-  # --- RECURSIVE LOGIC ---
+  # ----------------------------------------------------------------------
+  # LINE PROCESSING
+  # ----------------------------------------------------------------------
 
   @doc false
-  # Iterates over the list of lines, parsing them using the parse_line/1 function.
+  # Iterates over the list of lines,
+  # parsing them using the parse_and_validate_line/1 function.
   defp process_lines(accumulator, [], _line_number), do: accumulator
-  defp process_lines(accumulator, [first_line | rest], line_number) do
-    new_accumulator =
-      case parse_line(first_line) do
-        {:ok, data} -> update_accumulator(accumulator, data)
+  defp process_lines(accumulator, [first_line | remaining_lines], line_number) do
+    updated_accumulator =
+      case parse_and_validate_line(first_line) do
+        {:ok, parsed_line} ->
+          update_accumulator(accumulator, parsed_line)
 
         {:error, reason} ->
           Map.update!(accumulator, :error_lines, fn errors ->
@@ -72,136 +98,174 @@ defmodule FileProcessor.CsvProcessor do
           end)
       end
 
-    process_lines(new_accumulator, rest, line_number + 1)
+    process_lines(updated_accumulator, remaining_lines, line_number + 1)
   end
 
-  @doc false
-  # Updates the accumulator data with information from a successfully parsed line.
-  # Calculates the sales amount (applying discounts) before adding it to the totals.
-  defp update_accumulator(accumulator, data) do
-    sale_amount = calculate_sale_total(data)
-
-    %{
-      accumulator |
-      total_sales: accumulator.total_sales + sale_amount,
-      products: MapSet.put(accumulator.products, data.product),
-      discounts: [data.discount | accumulator.discounts],
-      product_stats: Map.update(accumulator.product_stats, data.product, data.quantity, &(&1 + data.quantity)),
-      category_stats: Map.update(accumulator.category_stats, data.category, sale_amount, &(&1 + sale_amount)),
-      min_date: update_min_date(accumulator.min_date, data.date),
-      max_date: update_max_date(accumulator.max_date, data.date),
-      processed_lines: accumulator.processed_lines + 1
-    }
-  end
-
-  # --- DATA PARSING AND VALIDATION ---
+  # ----------------------------------------------------------------------
+  # LINE PARSING AND VALIDATION
+  # ----------------------------------------------------------------------
 
   @doc false
   # Transforms a list of strings into a structured map with data types.
   # Performs type and range validations for price, quantity, and discount
-  defp parse_line([date, product, category, price, quantity, discount]) do
-    with {:ok, date} <- validate_date(date),
-         {:ok, price} <- validate_float(price, "Invalid price"),
-         {:ok, quantity} <- validate_int(quantity, "Invalid quantity"),
-         {:ok, discount} <- validate_discount(discount) do
+  defp parse_and_validate_line([date, product_name, category, unit_price, quantity, discount]) do
+    with {:ok, parsed_date} <- validate_date_format(date),
+         {:ok, parsed_price} <- validate_positive_float(unit_price, "Invalid price"),
+         {:ok, parsed_quantity} <- validate_positive_integer(quantity, "Invalid quantity"),
+         {:ok, parsed_discount} <- validate_discount_percentage(discount) do
       {:ok,
         %{
-          date: date,
-          product: product,
+          date: parsed_date,
+          product: product_name,
           category: category,
-          price: price,
-          quantity: quantity,
-          discount: discount
-        }
-      }
+          price: parsed_price,
+          quantity: parsed_quantity,
+          discount: parsed_discount
+      }}
     else
       {:error, reason} -> {:error, reason}
     end
   end
 
   # Error clause for lines with corrupt lines.
-  defp parse_line(_), do: {:error, "Corrupt line (missing columns)"}
+  defp parse_and_validate_line(_), do: {:error, "Corrupt line (missing columns)"}
 
-  # --- HELPERS ---
+  # ----------------------------------------------------------------------
+  # ACCUMULATION LOGIC
+  # ----------------------------------------------------------------------
 
   @doc false
-  # Calculate total sales from a product.
-  defp calculate_sale_total(%{price: price, quantity: quantity, discount: discount}) do
-    price * quantity * (1 - discount / 100)
+  # Updates the accumulator data with information from a successfully parsed line.
+  # Calculates the sales amount (applying discounts) before adding it to the totals.
+  defp update_accumulator(accumulator, parsed_line) do
+    sale_total = calculate_discounted_sale_total(parsed_line)
+
+    %{
+      accumulator |
+      total_sales: accumulator.total_sales + sale_total,
+      unique_products: MapSet.put(accumulator.unique_products, parsed_line.product),
+      discounts: [parsed_line.discount | accumulator.discounts],
+      product_stats:
+        Map.update(
+          accumulator.product_stats,
+          parsed_line.product,
+          parsed_line.quantity,
+          &(&1 + parsed_line.quantity)
+        ),
+      category_stats:
+        Map.update(
+          accumulator.category_stats,
+          parsed_line.category,
+          sale_total,
+          &(&1 + sale_total)
+          ),
+      earliest_date: pick_realiest_date(accumulator.earliest_date, parsed_line.date),
+      latest_date: pick_latest_date(accumulator.latest_date, parsed_line.date),
+      processed_lines_count: accumulator.processed_lines_count + 1
+    }
   end
+
+  # ----------------------------------------------------------------------
+  # VALIDATION HELPERS
+  # ----------------------------------------------------------------------
 
   @doc false
   # Validates prices are positive.
-  defp validate_float(value, msg) do
+  defp validate_positive_float(value, error_message) do
     case Float.parse(value) do
-      {num, _} when num >= 0 -> {:ok, num}
-      _ -> {:error, msg}
-    end
-  end
-
-  @doc false
-  # Validates discount is between 0 and 100%.
-  defp validate_discount(value) do
-    case Float.parse(value) do
-      {num, _} when num >= 0 and num <= 100 -> {:ok, num}
-      _ -> {:error, "Discount out of range (0-100)"}
+      {number, _} when number >= 0 -> {:ok, number}
+      _ -> {:error, error_message}
     end
   end
 
   @doc false
   # Validates quantity is positive.
-  defp validate_int(value, msg) do
+  defp validate_positive_integer(value, error_message) do
     case Integer.parse(value) do
-      {num, _} when num > 0 -> {:ok, num}
-      _ -> {:error, msg}
+      {number, _} when number > 0 -> {:ok, number}
+      _ -> {:error, error_message}
     end
   end
 
-  defp validate_date(date) do
-    if String.match?(date, ~r/^\d{4}-\d{2}-\d{2}$/), do: {:ok, date}, else: {:error, "Invalid date format"}
+  @doc false
+  # Validates discount is between 0 and 100%.
+  defp validate_discount_percentage(value) do
+    case Float.parse(value) do
+      {number, _} when number >= 0 and number <= 100 -> {:ok, number}
+      _ -> {:error, "Discount out of range (0-100)"}
+    end
   end
 
   @doc false
+  # Validates date format is correct.
+  defp validate_date_format(date_string) do
+    if String.match?(date_string, ~r/^\d{4}-\d{2}-\d{2}$/) do
+      {:ok, date_string}
+    else
+      {:error, "Invalid date format"}
+    end
+  end
+
+  # ----------------------------------------------------------------------
+  # DATE HELPERS
+  # ----------------------------------------------------------------------
+
+  @doc false
   # Date comparison helpers for string formats.
-  defp update_min_date(nil, new_date), do: new_date
-  defp update_min_date(current, new_date), do: if(new_date < current, do: new_date, else: current)
+  defp pick_realiest_date(nil, new_date), do: new_date
+  defp pick_realiest_date(current_date, new_date), do: if(new_date < current_date, do: new_date, else: current_date)
 
-  defp update_max_date(nil, new_date), do: new_date
-  defp update_max_date(current, new_date), do: if(new_date > current, do: new_date, else: current)
+  defp pick_latest_date(nil, new_date), do: new_date
+  defp pick_latest_date(current_date, new_date), do: if(new_date > current_date, do: new_date, else: current_date)
 
-  # --- METRICS CALCULATION ---
+  # ----------------------------------------------------------------------
+  # METRICS FINALIZATION
+  # ----------------------------------------------------------------------
 
   @doc false
   # Uses the accumulator data to calculate metrics and stores them in a map with
   # data that the Report module can convert into a string.
-  defp finalize_metrics(accumulator) do
+  defp build_final_metrics(accumulator) do
     # Search the top quantity product
     {top_product, top_quantity} =
-      if map_size(accumulator.product_stats) > 0,
-      do: Enum.max_by(accumulator.product_stats, fn {_product, quantity} -> quantity end),
-      else: {"N/A", 0}
+      if map_size(accumulator.product_stats) > 0 do
+        Enum.max_by(accumulator.product_stats, fn {_product, quantity} -> quantity end)
+      else
+        {"N/A", 0}
+      end
 
     # Search the top revenue category
     {top_category, top_revenue} =
-      if map_size(accumulator.category_stats) > 0,
-      do: Enum.max_by(accumulator.category_stats, fn {_category, revenue} -> revenue end),
-      else: {"N/A", 0.0}
+      if map_size(accumulator.category_stats) > 0 do
+        Enum.max_by(accumulator.category_stats, fn {_category, revenue} -> revenue end)
+      else
+        {"N/A", 0.0}
+      end
 
     %{
       total_sales: Float.round(accumulator.total_sales, 2),
-      unique_products: MapSet.size(accumulator.products),
+      unique_products: MapSet.size(accumulator.unique_products),
       average_discount: calculate_average(accumulator.discounts),
       top_product: "#{top_product} (#{top_quantity} units)",
       top_category: "#{top_category} ($#{Float.round(top_revenue, 2)})",
-      date_range: "#{accumulator.min_date} to #{accumulator.max_date}",
-      processed_lines: accumulator.processed_lines,
+      date_range: "#{accumulator.earliest_date} to #{accumulator.latest_date}",
+      processed_lines: accumulator.processed_lines_count,
       errors_found: length(accumulator.error_lines),
       error_details: Enum.reverse(accumulator.error_lines)
     }
   end
 
+  # ----------------------------------------------------------------------
+  # METRICS FINALIZATION
+  # ----------------------------------------------------------------------
+
+  @doc false
+  # Calculate total sales from a product.
+  defp calculate_discounted_sale_total(%{price: price, quantity: quantity, discount: discount}) do
+    price * quantity * (1 - discount / 100)
+  end
+
   # Calculates the average of a list of numbers; returns 0.0 for empty lists.
   defp calculate_average([]), do: 0.0
-  defp calculate_average(list), do: Enum.sum(list) / length(list)
-
+  defp calculate_average(numbers), do: Enum.sum(numbers) / length(numbers)
 end

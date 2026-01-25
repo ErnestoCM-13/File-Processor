@@ -8,14 +8,14 @@ defmodule FileProcessor.LogProcessorTest do
     }
   end
 
-  describe "process/1" do
+  describe "process_log_files/1" do
     test "returns a two-element tuple with :ok and a map", %{valid_log: valid_log} do
-      assert {:ok, metrics} = FileProcessor.LogProcessor.process(valid_log)
+      assert {:ok, metrics} = FileProcessor.LogProcessor.process_log_files(valid_log)
       assert is_map(metrics)
     end
 
     test "returns a map with expected keys", %{valid_log: valid_log} do
-      {:ok, metrics} = FileProcessor.LogProcessor.process(valid_log)
+      {:ok, metrics} = FileProcessor.LogProcessor.process_log_files(valid_log)
       expected_keys = [
         :total_entries,
         :level_distribution,
@@ -30,7 +30,7 @@ defmodule FileProcessor.LogProcessorTest do
     end
 
     test "returns metrics with the correct data type", %{valid_log: valid_log} do
-      {:ok, metrics} = FileProcessor.LogProcessor.process(valid_log)
+      {:ok, metrics} = FileProcessor.LogProcessor.process_log_files(valid_log)
 
       assert is_integer(metrics.total_entries)
       assert is_list(metrics.level_distribution)
@@ -42,9 +42,9 @@ defmodule FileProcessor.LogProcessorTest do
     end
   end
 
-  describe "process/1 with valid files" do
+  describe "process_log_files/1 with valid files" do
     test "returns metrics with the exact expected values", %{valid_log: valid_log} do
-      {:ok, metrics} = FileProcessor.LogProcessor.process(valid_log)
+      {:ok, metrics} = FileProcessor.LogProcessor.process_log_files(valid_log)
 
       assert metrics.total_entries == 71
       assert metrics.level_distribution == [
@@ -61,9 +61,9 @@ defmodule FileProcessor.LogProcessorTest do
     end
   end
 
-  describe "process/1 with error files" do
+  describe "process_log_files/1 with error files" do
     test "skip invalid LOG lines and collects their errors", %{error_log: error_log} do
-      {:ok, metrics} = FileProcessor.LogProcessor.process(error_log)
+      {:ok, metrics} = FileProcessor.LogProcessor.process_log_files(error_log)
 
       assert metrics.total_entries == 3
       assert metrics.level_distribution == [

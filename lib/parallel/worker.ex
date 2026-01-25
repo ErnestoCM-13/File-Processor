@@ -1,11 +1,20 @@
 defmodule Parallel.Worker do
   @moduledoc """
-  Specific unit of work in the parallel architecture.
-  Each worker is responsible for processing a single file using the `FileProcessor` logic.
+  Worker responsible for processing a single file in the parallel architecture.
+  Each worker is spawned and monitored by `Parallel.FileProcessingCoordinator`.
+  Upon finishing the processing, it reports the result back to the coordinator.
   """
 
+  # ----------------------------------------------------------------------
+  # PUBLIC API
+  # ----------------------------------------------------------------------
+
   @doc """
-  Initializes the worker, triggers the processing logic, and sends the result back to the coordinator.
+  Initializes the worker process.
+
+  ## Processing flow
+  1. Processes the assigned file.
+  2. Sends the result back to the coordinator.
 
   ## Parameters
   - `file_path`: String path of the file to be processed.
@@ -16,9 +25,14 @@ defmodule Parallel.Worker do
     send(coordinator_pid, {:worker_done, self(), file_path, result})
   end
 
+  # ----------------------------------------------------------------------
+  # INTERNAL HELPERS
+  # ----------------------------------------------------------------------
+
   @doc false
   # Delegates the actual file processing to the main FileProcessor module.
+  # Returns either {:ok, metrics_map} or {:error, reason}
   defp process_file(file_path) do
-    FileProcessor.process_path(file_path)
+    FileProcessor.process_single_file(file_path)
   end
 end

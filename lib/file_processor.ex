@@ -191,8 +191,8 @@ defmodule FileProcessor do
       {:ok, metrics} ->
         {:ok, :csv, Path.basename(file_path), metrics}
 
-      {:error, reason} ->
-        {:error, Path.basename(file_path), reason}
+      # {:error, reason} ->
+        # {:error, Path.basename(file_path), reason}
     end
   end
 

@@ -8,6 +8,7 @@ defmodule FileProcessorWeb.ProcessorLive do
      |> assign(
        page_title: "File Processor",
        mode: "sequential",
+       loading: false,
        workers: 4,
        timeout: 4
      )
@@ -35,8 +36,16 @@ defmodule FileProcessorWeb.ProcessorLive do
 
   # Process handle
   def handle_event("start-processing", _params, socket) do
+    socket = assign(socket, loading: true)
 
-    IO.puts("Iniciando procesamiento en modo: #{socket.assigns.mode}")
-    {:noreply, socket}
+      consume_uploaded_entries(socket, :files, fn %{path: path}, entry ->
+        dest = Path.join("priv/static/uploads", entry.client_name)
+        File.cp!(path, dest)
+        {:ok, dest}
+      end)
+
+      :timer.sleep(2000)
+
+      {:noreply, assign(socket, loading: false)}
   end
 end

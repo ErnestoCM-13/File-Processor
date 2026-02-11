@@ -43,6 +43,8 @@
       </div>
     </div>
 
+
+
     <% # Options CARD %>
     <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
       <p class="text-sm font-semibold text-slate-500 mb-4">Processing mode</p>
@@ -71,8 +73,20 @@
       </div>
     </div>
 
-    <button phx-click="start-processing" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg">
-      Start Processing
+    <button
+      phx-click="start-processing"
+      disabled={@loading or Enum.empty?(@uploads.files.entries)}
+      class={"w-full font-bold py-4 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 #{if @loading, do: "bg-blue-300 cursor-not-allowed", else: "bg-blue-600 hover:bg-blue-700 text-white"}"}
+    >
+      <%= if @loading do %>
+        <div class="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+        Processing...
+      <% else %>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
+          <path fill-rule="evenodd" d="M4.5 5.653c0-1.427 1.529-2.33 2.779-1.643l11.54 6.347c1.295.712 1.295 2.573 0 3.286L7.28 19.99c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" />
+        </svg>
+        Start Processing
+      <% end %>
     </button>
   </div>
 </div>

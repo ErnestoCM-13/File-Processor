@@ -1,0 +1,58 @@
+<div class="min-h-screen bg-slate-50 p-8">
+  <div class="max-w-3xl mx-auto space-y-6">
+    <h1 class="text-3xl font-bold text-center text-slate-800 mb-10">File Processor</h1>
+
+    <% # CARD 1: SELECT FILES %>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+          <div class="flex items-center gap-3 mb-6">
+            <div class="text-blue-500">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-slate-800">Select Files</h2>
+          </div>
+        <div class="border-2 border-dashed border-slate-200 rounded-2xl p-12 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer group">
+                  <div class="bg-white p-4 rounded-full shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-slate-400">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </div>
+                  <p class="font-semibold text-slate-700">Click to upload files</p>
+                  <p class="text-sm text-slate-400 mt-1">Supported files: .csv, .json, .log</p>
+                </div>
+              </div>
+
+    <% # Options CARD %>
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
+      <p class="text-sm font-semibold text-slate-500 mb-4">Processing mode</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <% # Sequential %>
+        <div phx-click="select-mode" phx-value-mode="sequential"
+             class={"border-2 rounded-2xl p-4 cursor-pointer transition-all #{if @mode == "sequential", do: "border-blue-500 bg-blue-50", else: "border-slate-100 bg-white"}"}>
+          <p class={"font-bold #{if @mode == "sequential", do: "text-blue-700", else: "text-slate-700"}"}>Sequential</p>
+          <p class="text-xs text-slate-400">Process file by file</p>
+        </div>
+
+        <% # Parallel %>
+        <div phx-click="select-mode" phx-value-mode="parallel"
+             class={"border-2 rounded-2xl p-4 cursor-pointer transition-all #{if @mode == "parallel", do: "border-blue-500 bg-blue-50", else: "border-slate-100 bg-white"}"}>
+          <p class={"font-bold #{if @mode == "parallel", do: "text-blue-700", else: "text-slate-700"}"}>Parallel</p>
+          <p class="text-xs text-slate-400">Use Elixir processes</p>
+        </div>
+
+        <% # Benchmark %>
+        <div phx-click="select-mode" phx-value-mode="benchmark"
+             class={"border-2 rounded-2xl p-4 cursor-pointer transition-all #{if @mode == "benchmark", do: "border-blue-500 bg-blue-50", else: "border-slate-100 bg-white"}"}>
+          <p class={"font-bold #{if @mode == "benchmark", do: "text-blue-700", else: "text-slate-700"}"}>Benchmark</p>
+          <p class="text-xs text-slate-400">Compare modes</p>
+        </div>
+      </div>
+    </div>
+
+    <button phx-click="start-processing" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg">
+      Start Processing
+    </button>
+  </div>
+</div>

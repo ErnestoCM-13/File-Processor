@@ -17,7 +17,8 @@ defmodule FileProcessorWeb.Router do
   scope "/", FileProcessorWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    #get "/", PageController, :home
+    live "/", ProcessorLive, :index
   end
 
   # Other scopes may use custom stacks.

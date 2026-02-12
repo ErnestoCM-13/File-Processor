@@ -20,14 +20,14 @@ defmodule Parallel.Coordinator do
   Main entry point for parallel processing. Spawns the coordinator process.
 
   ## Parameters
-  - `file_paths`: List of file paths (strings) to be processed.
+  - `file_list`: List of files info (tuple) to be processed.
   - `parent_pid`: The PID of the process that will receive the final results.
   - `config`: Optional configuration map.
       - `:timeout`: Global timeout in milliseconds.
       - `:worker_module`: Module responsible for processing individual files
   """
-  def start_parallel_processing(file_paths, parent_pid, config \\ %{}) when is_list(file_paths) do
-    spawn(Parallel.Coordinator, :initialize_coordinator, [file_paths, parent_pid, config])
+  def start_parallel_processing(file_list, parent_pid, config \\ %{}) when is_list(file_list) do
+    spawn(Parallel.Coordinator, :initialize_coordinator, [file_list, parent_pid, config])
   end
 
   # ----------------------------------------------------------------------
@@ -37,8 +37,8 @@ defmodule Parallel.Coordinator do
   @doc """
   Initializes the coordinator state, spawns workers for each file, and sets a global timeout.
   """
-  def initialize_coordinator(file_paths, parent_pid, config) do
-    total_files = length(file_paths)
+  def initialize_coordinator(file_list, parent_pid, config) do
+    total_files = length(file_list)
 
     timeout_ms = Map.get(config, :timeout, @default_timeout)
 
@@ -54,7 +54,7 @@ defmodule Parallel.Coordinator do
 
     initial_metrics = FileProcessor.set_initial_metrics_map()
 
-    updated_state = spawn_workers_process(file_paths, coordinator_state)
+    updated_state = spawn_workers_process(file_list, coordinator_state)
 
     Process.send_after(self(), :global_timeout, timeout_ms)
 
@@ -67,17 +67,17 @@ defmodule Parallel.Coordinator do
 
   @doc false
   # Iterates through the file list to spawn a monitored worker for each one.
-  # Returns the updated state with a map of PIDs to file paths.
-  defp spawn_workers_process(file_paths, state) do
+  # Returns the updated state with a map of PIDs and file info.
+  defp spawn_workers_process(file_list, state) do
     workers_map =
-      Enum.reduce(file_paths, %{}, fn file_path, acc ->
+      Enum.reduce(file_list, %{}, fn file_info, acc ->
         {pid, _monitor_ref} =
           spawn_monitor(
             state.worker_module,
             :init,
-            [file_path, self()])
+            [file_info, self()])
 
-        Map.put(acc, pid, file_path)
+        Map.put(acc, pid, file_info)
       end)
 
     %{state | active_workers: workers_map}
@@ -94,7 +94,7 @@ defmodule Parallel.Coordinator do
       # ----------------------------------------------------------------------
       # Worker completed successfully
       # ----------------------------------------------------------------------
-      {:worker_done, worker_pid, file_path, result} ->
+      {:worker_done, worker_pid, file_info, result} ->
         new_completed_count = state.completed_files + 1
 
         updated_metrics = FileProcessor.update_metrics_map(
@@ -102,7 +102,7 @@ defmodule Parallel.Coordinator do
           result
         )
 
-        print_progress(file_path, new_completed_count, state.total_files)
+        print_progress(file_info, new_completed_count, state.total_files)
 
         check_completition(worker_pid, state, new_completed_count, updated_metrics)
 
@@ -111,12 +111,12 @@ defmodule Parallel.Coordinator do
       # ----------------------------------------------------------------------
       {:DOWN, _ref, :process, worker_pid, reason} ->
         if Map.has_key?(state.active_workers, worker_pid) do
-          file_path = Map.get(state.active_workers, worker_pid)
+          {_file_path, file_name} = Map.get(state.active_workers, worker_pid)
 
           new_completed_count = state.completed_files + 1
 
           error_result =
-            {:error, Path.basename(file_path), "Worker crashed: #{reason}"}
+            {:error, file_name, "Worker crashed: #{reason}"}
 
           updated_metrics =
             FileProcessor.update_metrics_map(
@@ -124,7 +124,7 @@ defmodule Parallel.Coordinator do
               error_result
             )
 
-          IO.puts("Error: Worker for #{Path.basename(file_path)} crashed")
+          IO.puts("Error: Worker for #{file_name} crashed")
 
           check_completition(worker_pid, state, new_completed_count, updated_metrics)
         else
@@ -138,13 +138,12 @@ defmodule Parallel.Coordinator do
         updated_metrics =
           state.active_workers
           |> Map.values()
-          |> Enum.reduce(accumulated_metrics, fn file_path, acc ->
-            IO.puts("Error: Worker for #{Path.basename(file_path)} take too long")
+          |> Enum.reduce(accumulated_metrics, fn {_file_path, file_name}, acc ->
+            IO.puts("Error: Worker for #{file_name} take too long")
 
             FileProcessor.update_metrics_map(
               acc,
-              {:error, Path.basename(file_path),
-              "Timeout exceeded"}
+              {:error, file_name, "Timeout exceeded"}
             )
           end)
 
@@ -187,7 +186,7 @@ defmodule Parallel.Coordinator do
 
   @doc false
   # Prints the current progress to the console.
-  defp print_progress(file_path, completed, total) do
-    IO.puts("Processed #{Path.basename(file_path)}. Progress: #{completed}/#{total}")
+  defp print_progress({_file_path, file_name}, completed, total) do
+    IO.puts("Processed #{file_name}. Progress: #{completed}/#{total}")
   end
 end

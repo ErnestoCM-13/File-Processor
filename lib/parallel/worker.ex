@@ -17,12 +17,12 @@ defmodule Parallel.Worker do
   2. Sends the result back to the coordinator.
 
   ## Parameters
-  - `file_path`: String path of the file to be processed.
+  - `file_info`: Two element tuple with the name and path of the file to be processed.
   - `coordinator_pid`: PID of the `Parallel.Coordinator` process.
   """
-  def init(file_path, coordinator_pid) do
-    result = process_file(file_path)
-    send(coordinator_pid, {:worker_done, self(), file_path, result})
+  def init(file_info, coordinator_pid) do
+    result = process_file(file_info)
+    send(coordinator_pid, {:worker_done, self(), file_info, result})
   end
 
   # ----------------------------------------------------------------------
@@ -32,7 +32,7 @@ defmodule Parallel.Worker do
   @doc false
   # Delegates the actual file processing to the main FileProcessor module.
   # Returns either {:ok, metrics_map} or {:error, reason}
-  defp process_file(file_path) do
-    FileProcessor.process_single_file(file_path)
+  defp process_file(file_info) do
+    FileProcessor.process_single_file(file_info)
   end
 end

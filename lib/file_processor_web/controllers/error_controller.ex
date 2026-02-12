@@ -3,13 +3,21 @@ defmodule FileProcessorWeb.ErrorController do
   use FileProcessorWeb, :controller
 
   def index(conn, _params) do
-    # Mock data for errors found during processing
+    # Mock data structured to match the new Figma design
     errors = [
-      %{file: "ventas_marzo.csv", line: 45, reason: "Invalid date format", snippet: "2024-13-01,Product_A,50.0"},
-      %{file: "config.json", line: 12, reason: "Unexpected token", snippet: "\"timeout\": 5000,, \"retry\": true"},
-      %{file: "system.log", line: 890, reason: "Memory overflow simulation", snippet: "CRITICAL: Out of memory at 0x89FF"}
+      %{type: :critical, file: "usuarios_malformado.json", msg: "Malformed JSON file"},
+      %{type: :critical, file: "invalid_file_type.txt", msg: "Unsupported file type, expected files with extension .csv, .json or .log"},
+      %{type: :warning, file: "ventas_corrupto.csv", details: [
+        "line 2: Invalid price", "line 3: Invalid quantity", "line 5: Corrupt line (missing columns)"
+      ]},
+      %{type: :warning, file: "usuarios_sucio.json", details: [
+        "User ID missing or invalid type", "Session duration negative or invalid for User: 1"
+      ]}
     ]
 
-    render(conn, :index, errors: errors)
+    # Calculate counts for the top cards
+    counts = %{total: 5, critical: 2, invalid: 3}
+
+    render(conn, :index, errors: errors, counts: counts)
   end
 end

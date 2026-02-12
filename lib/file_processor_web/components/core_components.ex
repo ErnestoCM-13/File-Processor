@@ -495,4 +495,23 @@ defmodule FileProcessorWeb.CoreComponents do
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
   end
+
+  # lib/file_processor_web/components/core_components.ex
+
+  @doc """
+  Renders a metric row with a label and a value, matching the Figma design styles.
+  """
+  attr :label, :string, required: true
+  attr :value, :any, required: true
+  # Optional: adds a CSS class for values that need specific colors (like red for errors)
+  attr :class, :string, default: "text-slate-800"
+
+  def metric_row(assigns) do
+    ~H"""
+    <div class="flex justify-between border-b border-slate-50 py-2">
+      <span class="text-slate-500 text-sm"><%= @label %></span>
+      <span class="font-bold text-slate-800"><%= @value %></span>
+    </div>
+    """
+  end
 end

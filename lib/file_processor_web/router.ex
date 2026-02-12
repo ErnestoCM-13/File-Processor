@@ -19,6 +19,7 @@ defmodule FileProcessorWeb.Router do
 
     #get "/", PageController, :home
     live "/", ProcessorLive, :index
+    live "/metrics", MetricsLive, :index
   end
 
   # Other scopes may use custom stacks.

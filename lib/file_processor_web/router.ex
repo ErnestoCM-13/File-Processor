@@ -17,10 +17,8 @@ defmodule FileProcessorWeb.Router do
   scope "/", FileProcessorWeb do
     pipe_through :browser
 
-    #get "/", PageController, :home
-    live "/", ProcessorLive, :index
+    get "/", PageController, :home
     live "/metrics", MetricsLive, :index
-
     get "/errors", ErrorController, :index
   end
 

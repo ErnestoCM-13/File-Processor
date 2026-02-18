@@ -37,14 +37,6 @@ defmodule FileProcessor.Report do
   - `{:error, reason}` on failure
   """
   def generate({processing_mode, processed_results}, config \\ %{}) when is_map(processed_results) do
-    report_name_label =
-      Map.get(config, :report_name_label) || NaiveDateTime.local_now()
-
-    output_path =
-      "output/final_report_#{processing_mode}_#{report_name_label}.txt"
-
-    Path.dirname(output_path) |> File.mkdir_p!()
-
     sections_to_process = [:csv, :json, :log]
 
     report_content =
@@ -56,10 +48,10 @@ defmodule FileProcessor.Report do
       |> add_errors_section(processed_results)
       |> Enum.join("\n")
 
-    case File.write(output_path, report_content) do
-      :ok -> {:ok, "Report generated successfully: #{output_path}"}
-      {:error, reason} -> {:error, "Error writing report: #{reason}"}
-    end
+    processed_results
+      |> Map.put(:report, report_content) # Aquí va el string formateado
+      |> Map.put(:process_mode, processing_mode)
+      |> Map.put(:process_config, config)
   end
 
   # ----------------------------------------------------------------------

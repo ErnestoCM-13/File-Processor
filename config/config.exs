@@ -7,6 +7,10 @@
 # General application configuration
 import Config
 
+config :mime, :types, %{
+  "text/plain" => ["log"]
+}
+
 config :file_processor,
   ecto_repos: [FileProcessor.Repo],
   generators: [timestamp_type: :utc_datetime]

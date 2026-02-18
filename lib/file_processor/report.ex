@@ -39,6 +39,8 @@ defmodule FileProcessor.Report do
   def generate({processing_mode, processed_results}, config \\ %{}) when is_map(processed_results) do
     sections_to_process = [:csv, :json, :log]
 
+    summary_data = build_executive_summary_map(processed_results)
+
     report_content =
       []
       |> add_report_header(processing_mode)
@@ -305,4 +307,30 @@ defmodule FileProcessor.Report do
     ]
   end
   defp add_consolidated_totals(_entries, _type), do: []
+
+  defp build_executive_summary_map(results) do
+    csv_count = length(Map.get(results, :csv, []))
+    json_count = length(Map.get(results, :json, []))
+    log_count = length(Map.get(results, :log, []))
+
+    total_success = csv_count + json_count + log_count
+    total_errors = length(Map.get(results, :errors, []))
+    total_attempted = total_success + total_errors
+
+    # Logic to count files with internal parsing issues
+    files_with_issues =
+      [:csv, :json, :log]
+      |> Enum.flat_map(fn type -> Map.get(results, type, []) end)
+      |> Enum.count(fn file -> Map.get(file.metrics, :errors_found, 0) > 0 end)
+
+    # Calculate success rate as a percentage
+    rate = if total_attempted > 0, do: round((total_success / total_attempted) * 100), else: 0
+
+    %{
+      total_files_attempted: total_attempted,
+      successfully_processed_files: total_success,
+      files_with_internal_errors: files_with_issues + total_errors,
+      success_rate_percentage: rate
+    }
+  end
 end

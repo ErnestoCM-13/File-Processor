@@ -20,6 +20,14 @@ defmodule FileProcessorWeb.Router do
     get "/", PageController, :home
   end
 
+  # Scope for API calls
+  scope "/api", FileProcessorWeb do
+    pipe_through :api
+
+  # Endpoint to handle file uploads and processing
+    post "/process", FileController, :process
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", FileProcessorWeb do
   #   pipe_through :api

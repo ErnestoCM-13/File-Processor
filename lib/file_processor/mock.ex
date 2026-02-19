@@ -71,6 +71,13 @@ defmodule FileProcessor.Mock do
         }
       ],
 
+      executive_summary: %{
+        total_files_attempted: 4,
+        successfully_processed_files: 3,
+        files_with_internal_errors: 1,
+        success_rate_percentage: 65
+      },
+
       errors: [%{reason: "Malformed JSON file", file: "usuarios_malformado.json"}],
 
       # --- ADITIONAL KEYS (Performance) ---

@@ -51,7 +51,8 @@ defmodule FileProcessor.Report do
       |> Enum.join("\n")
 
     processed_results
-      |> Map.put(:report, report_content) # Aquí va el string formateado
+      |> Map.put(:report, report_content)
+      |> Map.put(:executive_summary, summary_data)
       |> Map.put(:process_mode, processing_mode)
       |> Map.put(:process_config, config)
   end

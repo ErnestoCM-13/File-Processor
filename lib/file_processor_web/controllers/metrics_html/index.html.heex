@@ -13,9 +13,7 @@
     <div class="flex justify-between items-center">
       <div class="flex items-center gap-4">
         <.link href={~p"/"} class="text-slate-400 hover:text-slate-600">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <.icon name="hero-arrow-left" class="w-7 h-7 text-slate-600" />
         </.link>
         <h1 class="text-3xl font-bold text-slate-800">Metrics Report</h1>
       </div>
@@ -23,12 +21,14 @@
         <% # Download report button %>
         <button
           onclick={"const blob = new Blob(['#{@results.report}'], {type: 'text/plain'}); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'report.txt'; a.click();"}
-          class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors"
+          class="bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors"
         >
+          <.icon name="hero-arrow-up-tray" class="w-6 h-6 " />
           Download Report
         </button>
         <% # Errors page button %>
-        <.link href={~p"/errors"} class="bg-orange-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-orange-100 hover:bg-orange-700 transition-colors">
+        <.link href={~p"/errors"} class="bg-orange-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-orange-100 hover:bg-orange-700 transition-colors">
+          <.icon name="hero-information-circle" class="w-6 h-6" />
           View Errors
         </.link>
       </div>
@@ -36,21 +36,25 @@
 
     <% # Executive summary section %>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">Total Files</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1"><%= @results.executive_summary.total_files_attempted %></p>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document" class="w-7 h-7 text-blue-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.total_files_attempted %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Total Files</p>
       </div>
-      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-green-500 text-xs font-bold uppercase tracking-widest">Processed Files</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1"><%= @results.executive_summary.successfully_processed_files %></p>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document-check" class="w-7 h-7 text-green-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.successfully_processed_files %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Processed Files</p>
       </div>
-      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-red-500 text-xs font-bold uppercase tracking-widest">Files With Errors</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1"><%= @results.executive_summary.files_with_internal_errors %></p>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document-minus" class="w-7 h-7 text-orange-600 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.files_with_internal_errors %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Files With Errors</p>
       </div>
-      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <p class="text-blue-500 text-xs font-bold uppercase tracking-widest">Success Rate</p>
-        <p class="text-2xl font-bold text-slate-800 mt-1"><%= @results.executive_summary.success_rate_percentage %>%</p>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-percent-badge" class="w-7 h-7 text-fuchsia-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.success_rate_percentage %>%</p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Success Rate</p>
       </div>
     </div>
 
@@ -58,9 +62,7 @@
     <%= if @results.process_mode == :benchmark do %>
       <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
         <div class="flex items-center gap-3 mb-6 text-blue-500">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
-          </svg>
+          <.icon name="hero-chart-bar" class="w-7 h-7 text-blue-500" />
           <h2 class="text-xl font-bold text-slate-800">Performance Analysis</h2>
         </div>
 

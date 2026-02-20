@@ -6,6 +6,9 @@
   </div>
 <% end %>
 
+<% # Encode report into a Base64 string %>
+<% encoded_report = :base64.encode(@results.report) %>
+
 <div class="min-h-screen bg-slate-50 p-8">
   <div class="max-w-5xl mx-auto space-y-8">
 
@@ -20,10 +23,25 @@
       <div class="flex gap-3">
         <% # Download report button %>
         <button
-          onclick={"const blob = new Blob(['#{@results.report}'], {type: 'text/plain'}); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'report.txt'; a.click();"}
+          type="button"
+          id="download-btn"
+          data-report={encoded_report}
+          onclick="
+            const b64 = this.getAttribute('data-report');
+            const decoded = atob(b64);
+            const blob = new Blob([decoded], {type: 'text/plain'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'report_processing.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          "
           class="bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors"
         >
-          <.icon name="hero-arrow-up-tray" class="w-6 h-6 " />
+          <.icon name="hero-arrow-down-tray" class="w-6 h-6 " />
           Download Report
         </button>
         <% # Errors page button %>

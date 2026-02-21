@@ -77,7 +77,7 @@ defmodule FileProcessor.LogProcessor do
 
         {:error, _reason} ->
           Map.update!(accumulator, :malformed_lines, fn errors ->
-            ["Invalid log format: #{String.slice(first_line, 0, 30)}..." | errors]
+            ["Invalid log format: #{first_line}" | errors]
           end)
       end
 

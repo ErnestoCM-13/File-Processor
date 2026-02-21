@@ -185,7 +185,8 @@ defmodule FileProcessor.Report do
           "  * Sequential time: #{Float.round(performance.sequential_time, 4)} seconds",
           "  * Parallel time: #{Float.round(performance.parallel_time, 4)} seconds",
           "  * Improvement: #{performance.improvement} times faster",
-          "  * Processes used: #{performance.processes}",
+          "  * Processes used in total: #{performance.processes}",
+          "  * Max processes used simultaneously: #{performance.max_processes_used}",
           "  * Memory used: #{performance.memory_max} MB",
           ""
         ]

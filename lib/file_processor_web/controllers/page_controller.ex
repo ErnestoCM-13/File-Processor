@@ -6,7 +6,6 @@ defmodule FileProcessorWeb.PageController do
   end
 
   def process(conn, %{"mode" => processing_mode_string, "files" => files} = params) do
-    IO.inspect(params, label: "--- DATOS RECIBIDOS ---")
     # Converts processing mode strings into atoms
     processing_mode_atom = case processing_mode_string do
         "sequential" -> :sequential

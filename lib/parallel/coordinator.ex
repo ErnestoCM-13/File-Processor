@@ -11,6 +11,7 @@ defmodule Parallel.Coordinator do
   """
 
   @default_timeout 10_000
+  @default_max_workers 50
 
   # ----------------------------------------------------------------------
   # PUBLIC API
@@ -44,17 +45,21 @@ defmodule Parallel.Coordinator do
 
     worker_module = Map.get(config, :worker_module, Parallel.Worker)
 
+    max_workers = Map.get(config, :max_workers, @default_max_workers)
+
     coordinator_state = %{
       total_files: total_files,
       completed_files: 0,
       parent_process: parent_pid,
       active_workers: %{},
+      pending_files: file_list,
+      max_workers: max_workers,
       worker_module: worker_module
     }
 
     initial_metrics = FileProcessor.set_initial_metrics_map()
 
-    updated_state = spawn_workers_process(file_list, coordinator_state)
+    updated_state = spawn_workers_process(coordinator_state)
 
     Process.send_after(self(), :global_timeout, timeout_ms)
 
@@ -68,19 +73,23 @@ defmodule Parallel.Coordinator do
   @doc false
   # Iterates through the file list to spawn a monitored worker for each one.
   # Returns the updated state with a map of PIDs and file info.
-  defp spawn_workers_process(file_list, state) do
-    workers_map =
-      Enum.reduce(file_list, %{}, fn file_info, acc ->
-        {pid, _monitor_ref} =
-          spawn_monitor(
-            state.worker_module,
-            :init,
-            [file_info, self()])
+  defp spawn_workers_process(state) do
+    current_active_workers_count = map_size(state.active_workers)
+    available_workers_slots = state.max_workers - current_active_workers_count
 
-        Map.put(acc, pid, file_info)
-      end)
+    if available_workers_slots > 0 and Enum.any?(state.pending_files) do
+      {files_to_process, remaining_files} = Enum.split(state.pending_files, available_workers_slots)
 
-    %{state | active_workers: workers_map}
+      new_workers =
+        Enum.reduce(files_to_process, state.active_workers, fn file_info, acc ->
+          {pid, _ref} = spawn_monitor(state.worker_module, :init, [file_info, self()])
+          Map.put(acc, pid, file_info)
+        end)
+
+      %{state | active_workers: new_workers, pending_files: remaining_files}
+    else
+      state
+    end
   end
 
   # ----------------------------------------------------------------------
@@ -104,7 +113,10 @@ defmodule Parallel.Coordinator do
 
         print_progress(file_info, new_completed_count, state.total_files)
 
-        check_completition(worker_pid, state, new_completed_count, updated_metrics)
+        state
+        |> remove_worker(worker_pid)
+        |> spawn_workers_process()
+        |> check_completition(new_completed_count, updated_metrics)
 
       # ----------------------------------------------------------------------
       # Worker crashed
@@ -126,7 +138,10 @@ defmodule Parallel.Coordinator do
 
           IO.puts("Error: Worker for #{file_name} crashed")
 
-          check_completition(worker_pid, state, new_completed_count, updated_metrics)
+          state
+          |> remove_worker(worker_pid)
+          |> spawn_workers_process()
+          |> check_completition(new_completed_count, updated_metrics)
         else
           coordinator_loop(state, accumulated_metrics)
         end
@@ -158,22 +173,25 @@ defmodule Parallel.Coordinator do
   # COMPLETITION CHECK
   # ----------------------------------------------------------------------
 
+  defp remove_worker(state, worker_pid) do
+    %{state | active_workers: Map.delete(state.active_workers, worker_pid)}
+  end
+
   @doc false
   # Checks if all files have been processed (successfully or with error).
   # Notifies the parent process or continues the loop.
-  defp check_completition(worker_pid, state, completed_files, accumulated_metrics) do
-    remaining_workers = Map.delete(state.active_workers, worker_pid)
-
+  defp check_completition(state, completed_files, accumulated_metrics) do
     if completed_files == state.total_files do
       final_results =
-        Map.put(accumulated_metrics, :processes_used, state.total_files)
+        accumulated_metrics
+        |> Map.put(:processes_used, state.total_files)
+        |> Map.put(:max_workers, state.max_workers)
 
       send(state.parent_process, {:all_done, final_results})
     else
       coordinator_loop(
         %{state |
-          completed_files: completed_files,
-          active_workers: remaining_workers
+          completed_files: completed_files
         },
         accumulated_metrics
       )

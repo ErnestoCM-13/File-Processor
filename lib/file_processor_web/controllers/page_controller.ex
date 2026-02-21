@@ -22,11 +22,17 @@ defmodule FileProcessorWeb.PageController do
     }
 
     # Calls the file processor mock. Will be replaced with the real file processor logic
-    results = FileProcessor.Mock.process_files(processing_mode_atom, :list, files, processing_config)
+    results_map = FileProcessor.process_files(processing_mode_atom, :list, files, processing_config)
+
+    # Generates an ID
+    results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
+
+    # Stores the results and id in the server memory
+    FileProcessor.ResultsCache.put_processment_results(results_id, results_map)
 
     # Saves in session and redirects to the metrics page
     conn
-    |> put_session(:results, results)
+    |> put_session(:results_id, results_id)
     |> redirect(to: ~p"/metrics")
   end
 

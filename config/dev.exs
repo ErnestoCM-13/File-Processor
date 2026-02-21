@@ -3,7 +3,7 @@ import Config
 # Configure your database
 config :file_processor, FileProcessor.Repo,
   username: "postgres",
-  password: "sasa",
+  password: "postgres",
   hostname: "localhost",
   database: "file_processor_dev",
   stacktrace: true,

@@ -11,11 +11,11 @@
 @tailwind utilities;
 
 :root {
-    --brand-blue: #007bff; /* El azul del botón "Start Processing" */
-    --brand-blue-light: #bbd9fb; /* Fondo de selección en Processing Options */
-    --brand-gray-bg: #f8f9fa; /* Fondo general de la app */
-    --brand-error: #dc3545; /* Rojo de la página de Errors */
-    --brand-success: #28a745; /* Verde de "Improvement" en Metrics */
+    --brand-blue: #007bff; /* Blue in botton "Start Processing" */
+    --brand-blue-light: #bbd9fb; /*  Processing Options */
+    --brand-gray-bg: #f8f9fa; /* App background */
+    --brand-error: #dc3545; /* Red in Errors Page */
+    --brand-success: #28a745; /* Green in "Improvement" Metrics */
 }
 
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.

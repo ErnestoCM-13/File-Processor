@@ -1,11 +1,10 @@
 defmodule Parallel.CoordinatorTest do
   use ExUnit.Case
 
-  @doc """
-  Sets up the test data.
-  Note: File list must be a list of tuples {path, name} to match
-  the Coordinator's internal expectations.
-  """
+  @doc false
+  # Sets up the test data.
+  # Note: File list must be a list of tuples {path, name} to match
+  # the Coordinator's internal expectations.
   setup do
     %{
       # Corrected to tuples: {path, name}

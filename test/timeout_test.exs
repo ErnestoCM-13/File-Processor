@@ -21,7 +21,7 @@ defmodule Parallel.TimeoutTest do
     Coordinator.start_parallel_processing(file_list, parent, config)
 
     # Should receive :all_done due to global_timeout
-    assert_receive {:all_done, metrics}, 500
+    assert_receive {:all_done, _metrics}, 500
 
   end
 end

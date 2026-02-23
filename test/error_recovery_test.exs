@@ -9,7 +9,7 @@ defmodule Parallel.ErrorRecoveryTest do
   test "coordinator recovers and reports error when a worker crashes" do
     parent = self()
 
-    config = %{worker_module: FileProcessor.Support.CrashingWorker}
+    config = %{worker_module: TestSupport.CrashingWorker}
     file_list = [{"path/to/fail.csv", "fail.csv"}]
 
     Coordinator.start_parallel_processing(file_list, parent, config)

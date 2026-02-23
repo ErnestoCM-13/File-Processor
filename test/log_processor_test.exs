@@ -54,7 +54,7 @@ defmodule FileProcessor.LogProcessorTest do
         "WARN: 8.5%"
       ] |> IO.inspect(label: "Esperado")
       assert metrics.most_problematic_component == "Integration (2 errors)"
-      assert metrics.frequent_error_pattern == "127 notificaciones push enviadas (1 ocurrences)"
+      assert metrics.frequent_error_pattern == "1,247 eventos registrados (1 occurrences)"
       assert metrics.peak_log_hour == "8:00"
       assert metrics.errors_found == 0
       assert metrics.error_details == []
@@ -72,7 +72,7 @@ defmodule FileProcessor.LogProcessorTest do
         "INFO: 33.3%"
       ]
       assert metrics.most_problematic_component == "DB (1 errors)"
-      assert metrics.frequent_error_pattern == "Connection lost (1 ocurrences)"
+      assert metrics.frequent_error_pattern == "Connection lost (1 occurrences)"
       assert metrics.peak_log_hour == "14:00"
       assert metrics.errors_found == 3
       assert metrics.error_details == [

@@ -170,21 +170,29 @@ defmodule FileProcessor.LogProcessor do
   defp build_final_metrics(accumulator) do
     # Identifies the component with the highest incidence of critical failures.
     {top_component, component_error_count} =
-      if map_size(accumulator.components) > 0,
-        do: Enum.max_by(accumulator.components, fn {_component, count} -> count end),
-        else: {"None", 0}
+      if map_size(accumulator.components) > 0 do
+        accumulator.components
+        |> Enum.sort_by(fn {component, count} -> {-count, component} end)
+        |> List.first()
+      else
+        {"None", 0}
+      end
 
     # Identifies the most frequent root cause (repeated message).
     {top_message, message_count} =
-      if map_size(accumulator.message_occurrences) > 0,
-        do: Enum.max_by(accumulator.message_occurrences, fn {_message, count} -> count end),
-        else: {"N/A", 0}
+      if map_size(accumulator.message_occurrences) > 0 do
+        accumulator.message_occurrences
+        |> Enum.sort_by(fn {message, count} -> {-count, message} end)
+        |> List.first()
+      else
+        {"N/A", 0}
+      end
 
     %{
       total_entries: accumulator.total_entries,
       level_distribution: calculate_level_distribution(accumulator.levels, accumulator.total_entries),
       most_problematic_component: "#{top_component} (#{component_error_count} errors)",
-      frequent_error_pattern: "#{top_message} (#{message_count} ocurrences)",
+      frequent_error_pattern: "#{top_message} (#{message_count} occurrences)",
       peak_log_hour: determine_peak_hour(accumulator.entries_by_hours),
       errors_found: length(accumulator.malformed_lines),
       error_details: accumulator.malformed_lines
@@ -200,6 +208,7 @@ defmodule FileProcessor.LogProcessor do
   defp calculate_level_distribution(_levels, 0), do: "None"
   defp calculate_level_distribution(levels, total_entries) do
     levels
+    |> Enum.sort()
     |> Enum.map(fn {level, count} ->
       percentage = Float.round((count / total_entries) * 100, 1)
       "#{level}: #{percentage}%"

@@ -52,9 +52,9 @@ defmodule FileProcessor.LogProcessorTest do
         "ERROR: 11.3%",
         "INFO: 66.2%",
         "WARN: 8.5%"
-      ]
+      ] |> IO.inspect(label: "Esperado")
       assert metrics.most_problematic_component == "Integration (2 errors)"
-      assert metrics.frequent_error_pattern == "127 notificaciones push enviadas\r (1 ocurrences)"
+      assert metrics.frequent_error_pattern == "127 notificaciones push enviadas (1 ocurrences)"
       assert metrics.peak_log_hour == "8:00"
       assert metrics.errors_found == 0
       assert metrics.error_details == []
@@ -72,13 +72,13 @@ defmodule FileProcessor.LogProcessorTest do
         "INFO: 33.3%"
       ]
       assert metrics.most_problematic_component == "DB (1 errors)"
-      assert metrics.frequent_error_pattern == "Connection lost\r (1 ocurrences)"
+      assert metrics.frequent_error_pattern == "Connection lost (1 ocurrences)"
       assert metrics.peak_log_hour == "14:00"
       assert metrics.errors_found == 3
       assert metrics.error_details == [
-        "Invalid log format: [DEBUG] [APP] Missing date and time at start\r",
-        "Invalid log format: 02/28/2024 14:10:00 [WARN] [SYS] High memory usage\r",
-        "Invalid log format: Esto es una línea de texto basura que no debería estar aquí\r"
+        "Invalid log format: [DEBUG] [APP] Missing date and time at start",
+        "Invalid log format: 02/28/2024 14:10:00 [WARN] [SYS] High memory usage",
+        "Invalid log format: Esto es una línea de texto basura que no debería estar aquí"
       ]
     end
   end

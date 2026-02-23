@@ -37,6 +37,8 @@ defmodule Benchmark do
 
     memory_used_mb = Float.round((end_memory - start_memory) / 1_048_576, 2)
 
+    final_memory_mb = if memory_used_mb < 0, do: 0.0, else: memory_used_mb
+
     total_time_seconds = (end_time - start_time) / 1_000_000
 
     {processes_total, max_processes_used} =
@@ -52,7 +54,7 @@ defmodule Benchmark do
 
     benchmark_metrics = %{
       time: total_time_seconds,
-      memory_mb: memory_used_mb,
+      memory_mb: final_memory_mb,
       processes: processes_total,
       max_processes_used: max_processes_used
     }

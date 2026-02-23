@@ -128,7 +128,7 @@ defmodule Parallel.Coordinator do
           new_completed_count = state.completed_files + 1
 
           error_result =
-            {:error, file_name, "Worker crashed: #{reason}"}
+            {:error, file_name, "Worker crashed: #{inspect(reason)}"}
 
           updated_metrics =
             FileProcessor.update_metrics_map(
@@ -136,7 +136,7 @@ defmodule Parallel.Coordinator do
               error_result
             )
 
-          IO.puts("Error: Worker for #{file_name} crashed")
+          IO.puts("Error: Worker for #{inspect(file_name)} crashed")
 
           state
           |> remove_worker(worker_pid)
@@ -154,7 +154,7 @@ defmodule Parallel.Coordinator do
           state.active_workers
           |> Map.values()
           |> Enum.reduce(accumulated_metrics, fn {_file_path, file_name}, acc ->
-            IO.puts("Error: Worker for #{file_name} take too long")
+            IO.puts("Error: Worker for #{inspect(file_name)} take too long")
 
             FileProcessor.update_metrics_map(
               acc,
@@ -205,6 +205,6 @@ defmodule Parallel.Coordinator do
   @doc false
   # Prints the current progress to the console.
   defp print_progress({_file_path, file_name}, completed, total) do
-    IO.puts("Processed #{file_name}. Progress: #{completed}/#{total}")
+    IO.puts("Processed #{inspect(file_name)}. Progress: #{inspect(completed)}/#{inspect(total)}")
   end
 end

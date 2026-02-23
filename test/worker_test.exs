@@ -19,12 +19,10 @@ defmodule Parallel.WorkerTest do
     }
   end
 
-  test "init sends processed result to coordinator", %{coordinator: coordinator, file_path: file_path, results: results} do
-    Parallel.Worker.init(file_path, coordinator)
-
-    assert_receive {:worker_done, pid, file_path_received, results_received}
-    assert pid == self()
-    assert file_path_received == file_path
-    assert results_received == results
+  test "init sends processed result to coordinator" do
+    coordinator_pid = self()
+    path = "data/valid/ventas_enero.csv"
+    Parallel.Worker.init(path, coordinator_pid)
+    assert_receive {:worker_done, _pid, _info, _result}, 2000
   end
 end

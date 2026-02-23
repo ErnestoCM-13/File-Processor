@@ -81,7 +81,8 @@
             <%= for {label, value} <- [
               {"Sequential time:", "#{@results.performance.sequential_time}s"},
               {"Parallel time:", "#{@results.performance.parallel_time}s"},
-              {"Processes used:", @results.performance.processes},
+              {"Total processes used:", @results.performance.processes},
+              {"Max processes used simultaneously:", @results.performance.max_processes_used},
               {"Memory Max:", "#{@results.performance.memory_max}MB"}
             ] do %>
               <div class="flex justify-between p-3 bg-slate-50 rounded-lg">

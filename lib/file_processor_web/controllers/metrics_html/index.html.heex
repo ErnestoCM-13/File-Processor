@@ -1,0 +1,212 @@
+<% # Encode report into a Base64 string %>
+<% encoded_report = :base64.encode(@results.report) %>
+
+<div class="min-h-screen bg-slate-50 p-8">
+  <div class="max-w-5xl mx-auto space-y-8">
+
+    <% # Header section %>
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <.link href={~p"/"} class="text-slate-400 hover:text-slate-600">
+          <.icon name="hero-arrow-left" class="w-7 h-7 text-slate-600" />
+        </.link>
+        <h1 class="text-3xl font-bold text-slate-800">Metrics Report</h1>
+      </div>
+      <div class="flex gap-3">
+        <% # Download report button %>
+        <button
+          type="button"
+          id="download-btn"
+          data-report={encoded_report}
+          onclick="
+            const b64 = this.getAttribute('data-report');
+            const decoded = atob(b64);
+            const blob = new Blob([decoded], {type: 'text/plain'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'report_processing.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+          "
+          class="bg-blue-500 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 hover:bg-blue-700 transition-colors"
+        >
+          <.icon name="hero-arrow-down-tray" class="w-6 h-6 " />
+          Download Report
+        </button>
+        <% # Errors page button %>
+        <.link href={~p"/errors"} class="bg-orange-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-orange-100 hover:bg-orange-700 transition-colors">
+          <.icon name="hero-information-circle" class="w-6 h-6" />
+          View Errors
+        </.link>
+      </div>
+    </div>
+
+    <% # Executive summary section %>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document" class="w-7 h-7 text-blue-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.total_files_attempted %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Total Files</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document-check" class="w-7 h-7 text-green-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.successfully_processed_files %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Processed Files</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-document-minus" class="w-7 h-7 text-orange-600 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.files_with_internal_errors %></p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Files With Errors</p>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm grid grid-cols-2 grid-rows-2 items-start">
+        <.icon name="hero-percent-badge" class="w-7 h-7 text-fuchsia-500 justify-self-start" />
+        <p class="text-2xl font-bold text-slate-800 justify-self-end"><%= @results.executive_summary.success_rate_percentage %>%</p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest col-span-2 self-end">Success Rate</p>
+      </div>
+    </div>
+
+    <% # Performance analysis section %>
+    <%= if @results.process_mode == :benchmark do %>
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+        <div class="flex items-center gap-3 mb-6 text-blue-500">
+          <.icon name="hero-chart-bar" class="w-7 h-7 text-blue-500" />
+          <h2 class="text-xl font-bold text-slate-800">Performance Analysis</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div class="space-y-2">
+            <%= for {label, value} <- [
+              {"Sequential time:", "#{@results.performance.sequential_time}s"},
+              {"Parallel time:", "#{@results.performance.parallel_time}s"},
+              {"Total processes used:", @results.performance.processes},
+              {"Max processes used simultaneously:", @results.performance.max_processes_used},
+              {"Memory Max:", "#{@results.performance.memory_max}MB"}
+            ] do %>
+              <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
+                <span class="text-slate-500 text-sm"><%= label %></span>
+                <span class="text-slate-800 font-mono font-medium"><%= value %></span>
+              </div>
+            <% end %>
+          </div>
+
+          <div class="bg-green-50 border border-green-100 rounded-2xl p-8 text-center">
+            <p class="text-green-600 text-sm font-semibold mb-1">Improvement:</p>
+            <p class="text-2xl font-bold text-green-600"><%= @results.performance.improvement %>x Faster</p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <% # CSV Metrics section %>
+    <%= unless Enum.empty?(@results.csv) do %>
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+        <h2 class="text-xl font-bold text-slate-800 mb-8">CSV Files Metrics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+          <%= for item <- @results.csv do %>
+            <div>
+              <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">File: <%= item.file %></h3>
+              <div class="space-y-2">
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Total sales</span>
+                  <span class="text-slate-800 font-bold text-xs">$<%= item.metrics.total_sales %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Unique products</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.unique_products %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Top product</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.top_product %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Top category</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.top_category %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Average discount</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.average_discount %>%</span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Date range</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.date_range %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% # JSON Metrics section %>
+    <%= unless Enum.empty?(@results.json) do %>
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 mt-8">
+        <h2 class="text-xl font-bold text-slate-800 mb-8">JSON Files Metrics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+          <%= for item <- @results.json do %>
+            <div>
+              <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">File: <%= item.file %></h3>
+              <div class="space-y-2">
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Registered users</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.total_users %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Active users</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.active_percent %>%</span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Average session duration</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.avg_session_duration %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Total pagers visited</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.total_pages_visited %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Top 5 actions</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.top_5_actions %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <% # LOG Metrics section %>
+    <%= unless Enum.empty?(@results.log) do %>
+      <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 mt-8">
+        <h2 class="text-xl font-bold text-slate-800 mb-8">Log Files Metrics</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
+          <%= for item <- @results.log do %>
+            <div>
+              <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wider">File: <%= item.file %></h3>
+              <div class="space-y-2">
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Total entries</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.total_entries %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <p class="text-slate-500 text-sm">Level Distribution</p>
+                  <p class="text-slate-800 font-bold text-xs"><%= Enum.join(item.metrics.level_distribution, " | ") %></p>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Most problematic</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.most_problematic_component %></span>
+                </div>
+                <div class="flex justify-between p-1.5 bg-slate-50 rounded-lg">
+                  <span class="text-slate-500 text-sm">Frequent error pattern</span>
+                  <span class="text-slate-800 font-bold text-xs"><%= item.metrics.frequent_error_pattern %></span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+  </div>
+</div>

@@ -25,73 +25,88 @@ defmodule FileProcessor do
   - `source_type`:
       An atom that indicates how file paths are provided.
       Expected values: `:directory` or `:list`.
-  - `directory_path` or `path_list`:
+  - `directory_path` or `file_list`:
       A directory path (string) when `source_type` is `:directory`,
-      or a list of file paths (strings) when `source_type` is `:list`.
+      or a list of file paths (strings) or a %Plug.Upload structure list
+      when `source_type` is `:list`.
   - `runtime_config`:
       Configuration map used during processing and report generation.
   """
   def process_files(execution_mode, :directory, directory_path, runtime_config) when is_binary(directory_path) do
     case File.dir?(directory_path) do
       true ->
-        path_list =
+        file_list =
           directory_path
           |> File.ls!()
           |> Enum.map(&Path.join(directory_path, &1))
 
-        process_files(execution_mode, :list, path_list, runtime_config)
+        process_files(execution_mode, :list, file_list, runtime_config)
 
       false -> {:error, "Directory not found"}
     end
   end
 
-  def process_files(execution_mode, :list, path_list, runtime_config) when is_list(path_list) do
+  def process_files(execution_mode, :list, file_list, runtime_config) when is_list(file_list) do
+    normalized_file_list = Enum.map(file_list, &get_path_and_name/1)
+
     case execution_mode do
       :sequential ->
-        process_files_sequentially(path_list, runtime_config)
+        process_files_sequentially(normalized_file_list, runtime_config)
 
       :parallel ->
-        process_files_in_parallel(path_list, runtime_config)
+        process_files_in_parallel(normalized_file_list, runtime_config)
 
       :benchmark ->
-        process_files_with_benchmark(path_list, runtime_config)
+        process_files_with_benchmark(normalized_file_list, runtime_config)
     end
   end
 
   # Error clauses for invalid data type
   def process_files(_execution_mode, :directory, _path), do: {:error, "Invalid argument, expected a string path"}
-  def process_files(_execution_mode, :list, _path_list), do: {:error, "Invalid argument, expected a paths list"}
+  def process_files(_execution_mode, :list, _file_list), do: {:error, "Invalid argument, expected a path list or a %Plug.Upload structure list"}
+
+  # ----------------------------------------------------------------------
+  # DATA NORMALIZATION
+  # ----------------------------------------------------------------------
+
+  @doc false
+  # Normalizes different input formats into a standard `{file_path, file_name}` tuple.
+  defp get_path_and_name(%Plug.Upload{path: file_path, filename: file_name}), do: {file_path, file_name}
+  defp get_path_and_name(file_path) when is_binary(file_path), do: {file_path, Path.basename(file_path)}
+
+  # Error clause for invalid input format.
+  defp get_path_and_name(invalid), do: {:error, invalid, "Unsoported file format, expected a string path or a %Plug.Upload structure"}
 
   # ----------------------------------------------------------------------
   # EXECUTION MODES
   # ----------------------------------------------------------------------
 
-  defp process_files_sequentially(path_list, runtime_config) do
+  defp process_files_sequentially(file_list, runtime_config) do
     results =
       set_initial_metrics_map()
-      |> process_path_list(path_list)
+      |> process_file_list(file_list)
 
     FileProcessor.Report.generate({:sequential, results}, runtime_config)
   end
 
-  defp process_files_in_parallel(path_list, runtime_config) do
-    Parallel.Coordinator.start_parallel_processing(path_list, self(), runtime_config)
+  defp process_files_in_parallel(file_list, runtime_config) do
+    Parallel.Coordinator.start_parallel_processing(file_list, self(), runtime_config)
 
     receive do
       {:all_done, results} -> FileProcessor.Report.generate({:parallel, results}, runtime_config)
     end
   end
 
-  defp process_files_with_benchmark(path_list, runtime_config) do
+  defp process_files_with_benchmark(file_list, runtime_config) do
     {sequential_metrics, _} =
       Benchmark.measure(fn ->
         set_initial_metrics_map()
-        |> process_path_list(path_list)
+        |> process_file_list(file_list)
       end)
 
     {parallel_metrics, parallel_results} =
       Benchmark.measure(fn ->
-        Parallel.Coordinator.start_parallel_processing(path_list, self(), runtime_config)
+        Parallel.Coordinator.start_parallel_processing(file_list, self(), runtime_config)
         receive do: ({:all_done, results} -> results)
       end)
 
@@ -108,13 +123,13 @@ defmodule FileProcessor do
 
   @doc false
   # Recursive function to iterate through the path list for the sequential mode
-  defp process_path_list(acumulated_metrics, []), do: acumulated_metrics
+  defp process_file_list(acumulated_metrics, []), do: acumulated_metrics
 
-  defp process_path_list(acumulated_metrics, [current_path | remaining_paths]) do
-    result = process_single_file(current_path)
+  defp process_file_list(acumulated_metrics, [{file_path, file_name} | remaining_files]) do
+    result = process_single_file({file_path, file_name})
     updated_metrics = update_metrics_map(acumulated_metrics, result)
 
-    process_path_list(updated_metrics, remaining_paths)
+    process_file_list(updated_metrics, remaining_files)
   end
 
   # ----------------------------------------------------------------------
@@ -125,16 +140,16 @@ defmodule FileProcessor do
   Validates file existence and dispatches it to the correct processor
   based on the file extension.
   """
-  def process_single_file(file_path) when is_binary(file_path) do
+  def process_single_file({file_path, file_name}) when is_binary(file_path) do
     case File.exists?(file_path) do
       true ->
-        file_path
+        file_name
         |> Path.extname()
         |> String.downcase()
-        |> dispatch_file_by_extension(file_path)
+        |> dispatch_file_by_extension({file_path, file_name})
 
       false ->
-        {:error, Path.basename(file_path), "File not found"}
+        {:error, file_name, "File not found"}
     end
   end
 
@@ -186,38 +201,38 @@ defmodule FileProcessor do
 
   @doc false
   # These functions connect to specialized processing modules.
-  defp dispatch_file_by_extension(".csv", file_path) do
+  defp dispatch_file_by_extension(".csv", {file_path, file_name}) do
     case FileProcessor.CsvProcessor.process_csv_file(file_path) do
       {:ok, metrics} ->
-        {:ok, :csv, Path.basename(file_path), metrics}
+        {:ok, :csv, file_name, metrics}
 
       # {:error, reason} ->
         # {:error, Path.basename(file_path), reason}
     end
   end
 
-  defp dispatch_file_by_extension(".json", file_path) do
+  defp dispatch_file_by_extension(".json", {file_path, file_name}) do
     case FileProcessor.JsonProcessor.process_json_file(file_path) do
       {:ok, metrics} ->
-        {:ok, :json, Path.basename(file_path), metrics}
+        {:ok, :json, file_name, metrics}
 
       {:error, reason} ->
-        {:error, Path.basename(file_path), reason}
+        {:error, file_name, reason}
     end
   end
 
-  defp dispatch_file_by_extension(".log", file_path) do
+  defp dispatch_file_by_extension(".log", {file_path, file_name}) do
     case FileProcessor.LogProcessor.process_log_files(file_path) do
       {:ok, metrics} ->
-        {:ok, :log, Path.basename(file_path), metrics}
+        {:ok, :log, file_name, metrics}
 
       {:error, reason} ->
-        {:error, Path.basename(file_path), reason}
+        {:error, file_name, reason}
     end
   end
 
   # Error clause for unsupported file extensions.
-  defp dispatch_file_by_extension(_extension, file_path) do
-    {:error, Path.basename(file_path), "Unsupported file type. Expected files with extension .csv, .json or .log"}
+  defp dispatch_file_by_extension(_extension, {_file_path, file_name}) do
+    {:error, file_name, "Unsupported file type. Expected files with extension .csv, .json or .log"}
   end
 end

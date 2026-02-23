@@ -15,7 +15,8 @@ defmodule FileProcessor.Application do
       # Start a worker by calling: FileProcessor.Worker.start_link(arg)
       # {FileProcessor.Worker, arg},
       # Start to serve requests, typically the last entry
-      FileProcessorWeb.Endpoint
+      FileProcessorWeb.Endpoint,
+      FileProcessor.ResultsCache
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -37,15 +37,9 @@ defmodule FileProcessor.Report do
   - `{:error, reason}` on failure
   """
   def generate({processing_mode, processed_results}, config \\ %{}) when is_map(processed_results) do
-    report_name_label =
-      Map.get(config, :report_name_label) || NaiveDateTime.local_now()
-
-    output_path =
-      "output/final_report_#{processing_mode}_#{report_name_label}.txt"
-
-    Path.dirname(output_path) |> File.mkdir_p!()
-
     sections_to_process = [:csv, :json, :log]
+
+    summary_data = build_executive_summary_map(processed_results)
 
     report_content =
       []
@@ -56,10 +50,11 @@ defmodule FileProcessor.Report do
       |> add_errors_section(processed_results)
       |> Enum.join("\n")
 
-    case File.write(output_path, report_content) do
-      :ok -> {:ok, "Report generated successfully: #{output_path}"}
-      {:error, reason} -> {:error, "Error writing report: #{reason}"}
-    end
+    processed_results
+      |> Map.put(:report, report_content)
+      |> Map.put(:executive_summary, summary_data)
+      |> Map.put(:process_mode, processing_mode)
+      |> Map.put(:process_config, config)
   end
 
   # ----------------------------------------------------------------------
@@ -190,7 +185,8 @@ defmodule FileProcessor.Report do
           "  * Sequential time: #{Float.round(performance.sequential_time, 4)} seconds",
           "  * Parallel time: #{Float.round(performance.parallel_time, 4)} seconds",
           "  * Improvement: #{performance.improvement} times faster",
-          "  * Processes used: #{performance.processes}",
+          "  * Processes used in total: #{performance.processes}",
+          "  * Max processes used simultaneously: #{performance.max_processes_used}",
           "  * Memory used: #{performance.memory_max} MB",
           ""
         ]
@@ -313,4 +309,30 @@ defmodule FileProcessor.Report do
     ]
   end
   defp add_consolidated_totals(_entries, _type), do: []
+
+  defp build_executive_summary_map(results) do
+    csv_count = length(Map.get(results, :csv, []))
+    json_count = length(Map.get(results, :json, []))
+    log_count = length(Map.get(results, :log, []))
+
+    total_success = csv_count + json_count + log_count
+    total_errors = length(Map.get(results, :errors, []))
+    total_attempted = total_success + total_errors
+
+    # Logic to count files with internal parsing issues
+    files_with_issues =
+      [:csv, :json, :log]
+      |> Enum.flat_map(fn type -> Map.get(results, type, []) end)
+      |> Enum.count(fn file -> Map.get(file.metrics, :errors_found, 0) > 0 end)
+
+    # Calculate success rate as a percentage
+    rate = if total_attempted > 0, do: round((total_success / total_attempted) * 100), else: 0
+
+    %{
+      total_files_attempted: total_attempted,
+      successfully_processed_files: total_success,
+      files_with_internal_errors: files_with_issues + total_errors,
+      success_rate_percentage: rate
+    }
+  end
 end

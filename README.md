@@ -1,216 +1,165 @@
-# File Processor
+***
+
+# File Processor 🚀
 
 ## Description
-This project implements a file processor in Elixir capable of analyzing CSV, JSON, and LOG files. It supports sequential and parallel execution, as well as a benchmark mode for comparison, extracting specific metrics and generating a summary report.
 
----
+A high-performance file processing system built with **Elixir** and **Phoenix**. It is designed to analyze, validate, and extract metrics from **CSV**, **JSON**, and **LOG** files.  
+The system supports multiple execution strategies (Sequential and Parallel) and includes a built-in **Benchmark** mode to compare performance metrics such as execution time and memory usage.
 
-## Delivery 3 Objectives
-- `Fault Tolerance`: Implementation of spawn_monitor to detect and handle worker crashes.
-- `Execution Control`: Configurable timeouts per process to prevent system hangs.
-- `Resilience`: Automatic retry mechanism for failed processing attempts.
-- `Better Report`: Detailed log of corrupt files, internal parsing errors, and performance analysis.
+Now featuring a modern **Web Interface** built with **Phoenix LiveView** for a seamless user experience.
 
----
+***
+
+## Key Features
+
+*   **Multi-format Support:** Specialized processors for CSV, JSON, and LOG files.
+*   **Hybrid Execution:** Choose between sequential processing or highly concurrent parallel processing using Elixir's OTP lightweight processes.
+*   **Robust Error Tracking:** Detailed logging of malformed lines, validation errors, and file system issues.
+*   **Comprehensive Reporting:** Generates human-readable summaries and consolidated metrics.
+*   **Web Dashboard:** Upload and process files directly from your browser.
+*   **Advanced Benchmarking:** Real-time comparison between processing modes to visualize the *Elixir advantage*.
+
+***
+
+## Technical Objectives (Delivery 3)
+
+*   **Fault Tolerance:** Uses `spawn_monitor` and process monitors to detect and gracefully handle worker crashes.
+*   **Execution Control:** Implements configurable timeouts per process to prevent system hangs during heavy workloads.
+*   **Resilience:** Automatic retry mechanism for transient processing failures.
+*   **Enhanced Analytics:** Performance analysis including speedup factors and memory peak tracking.
+
+***
 
 ## Project Structure
-```lua
-file_processor/ 
-├── lib/ 
-│ ├── file_processor/
-│ │  ├── csv_processor.ex
-│ │  ├── json_processor.ex
-│ │  ├── log_processor.ex
-│ │  ├── report_generator.ex
-│ │  └── executable.ex
-│ ├── parallel/
-│ │  ├── coordinator.ex
-│ │  └── worker.ex
-│ ├── file_processor.ex 
-│ └── benchmark.ex
-├── data/ 
-│ ├── valid/ 
-│ │ ├── ventas_enero.csv 
-│ │ ├── ventas_febrero.csv 
-│ │ ├── usuarios.json 
-│ │ ├── sesiones.json 
-│ │ ├── sistema.log 
-│ │ └── aplicacion.log 
-│ └── error/ 
-│   ├── ventas_corrupto.csv 
-│   └── usuarios_malformado.json 
-├── output/ 
-│ └── [generated reports] 
-├── test 
-│ ├── file_processor_test.exs 
-│ ├── csv_processor_test.ex 
-│ ├── json_processor_test.ex 
-│ ├── log_processor_test.ex 
-│ ├── benchmark_test.ex
-│ └── test_helper.exs 
-├── .formatter.exs 
-├── .gitignore 
-├── mix.exs 
-└── README.md
-```
 
----
+    file_processor/
+    ├── lib/
+    │   ├── file_processor/        # Core business logic
+    │   │   ├── csv_processor.ex
+    │   │   ├── json_processor.ex
+    │   │   ├── log_processor.ex
+    │   │   ├── report.ex           # Report generation engine
+    │   │   └── executable.ex       # CLI logic
+    │   ├── file_processor_web/     # Phoenix Web Interface
+    │   │   ├── controllers/
+    │   │   ├── components/
+    │   │   └── endpoint.ex
+    │   ├── parallel/               # Concurrency management
+    │   │   ├── coordinator.ex      # Task orchestrator
+    │   │   └── worker.ex           # Unit of work
+    │   ├── file_processor.ex       # Main entry point
+    │   └── benchmark.ex            # Performance measurement
+    ├── test/                       # Full ExUnit test suite
+    ├── data/                       # Sample datasets (valid and corrupt)
+    └── output/                     # Generated text reports
 
-## Supported File Types
-**CSV (`.csv`)**
-- **Expected structure:**
-```csv
-fecha,producto,categoria,precio_unitario,cantidad,descuento
-YYYY-MM-DD,string,string,float,integer,float
-```
-- **Generated metrics:**
-  - Total sales
-  - Unique products count
-  - Top product
-  - Top category
-  - Average discount
-  - Date range
-  - Processed lines
+***
 
-**JSON (`.json`)**
-- **Expected structure:**
-```json
-{
-  "timestamp": "ISO-8601",
-  "usuarios": [
-    {
-      "id": integer,
-      "nombre": string,
-      "email": string,
-      "activo": boolean,
-      "ultimo_acceso": "ISO-8601"
-    }
-  ],
-  "sesiones": [
-    {
-      "usuario_id": integer,
-      "inicio": "ISO-8601",
-      "duracion_segundos": integer,
-      "paginas_visitadas": integer,
-      "acciones": [string]
-    }
-  ]
-}
-```
-- **Generated metrics:**
-  - Total users
-  - Active percent
-  - Average session duration
-  - Total pages visited
-  - Top 5 actions
-  - Peak hour
-  - Total sessions
-
-**LOG (`.log`)**
-- **Expected structure:**
-```
-YYYY-MM-DD HH:MM:SS [NIVEL] [COMPONENTE] Mensaje de log
-```
-- **Generated metrics:**
-  - Total entries
-  - Level distribution
-  - Most problematic component
-  - Frequent error pattern
-  - Peak log hour
-
----
-
-## Installation Guide
+## Installation & Setup
 
 ### Requirements
-- Elixir 1.14 or higher
-- Erlang/OTP 25 or higher
 
-### Setup
-1. Install dependencies:
+*   **Elixir 1.14+**
+*   **Erlang/OTP 25+**
+*   **Node.js** (for Phoenix assets)
+
+***
+
+### 1. Install Dependencies
+
 ```bash
 mix deps.get
 ```
-2. Generate the executable:
+
+### 2. Start the Web Server
+
+```bash
+mix phx.server
+```
+
+Visit: **<http://localhost:4000>**
+
+### 3. Build the CLI Executable
+
 ```bash
 mix escript.build
 ```
----
+
+***
 
 ## Usage
-The project generates a "file_processor" executable, which can be used to process an entire directory or a specific file or list of files. 
-You can add flags to toggle the processing mode between sequential (deffault mode), parallel, and benchmark; the latter executes both modes and measures their execution times to generate a performance comparison.
-You can also use --help or -h to print the executable's usage guide to the console.
 
-### Command Line Options:
-The executable file_processor supports the following flags:
+### Web Interface
 
-- `-h, --help`: Prints the usage guide.
-- `-d, --dir <path>`: Process all files in a directory.
-- `-f, --files <p1> <p2>`: Process a specific list of files.
-- `-p, --parallel`: Enable parallel processing.
-- `-b, --benchmark`: Run both modes and compare performance.
-- `-t, --timeout <ms>`: Set processing timeout (default: 10000ms).
+1.  Navigate to the home page.
+2.  Select your files (`.csv`, `.json`, `.log`).
+3.  Choose the processing mode (Sequential, Parallel, Benchmark).
+4.  View results and metrics directly on the dashboard.
 
-### Examples:
-- Process `data/valid/ventas.csv` file in sequentiall mode
-  ```bash
-  ./file_processor -f data/valid/ventas.csv
-  ```
-- Process `data/valid/usuarios.json` and `data/error/sistema_corrupto.log` files in parallel mode
-  ```bash
-  ./file_processor --files data/valid/usuarios.json data/error/sistema_corrupto.log -p
-    ```
-- Process `data/valid` directory in benchmark mode
-  ```bash
-  ./file_processor -d data/valid -b
-  ```
+***
 
----
+## Command Line Interface
+
+The `file_processor` executable supports:
+
+| Flag                   | Description                            |
+| ---------------------- | -------------------------------------- |
+| `-h`, `--help`         | Show usage guide                       |
+| `-d --dir <path>`      | Process all files in a directory       |
+| `-f --files <p1> <p2>` | Process a specific list of file paths  |
+| `-p --parallel`        | Enable parallel processing             |
+| `-b --benchmark`       | Run both modes and compare performance |
+| `-t --timeout <ms>`    | Set timeout (default: 10000ms)         |
+
+### CLI Examples
+
+```bash
+# Process a directory in parallel
+./file_processor -d data/valid -p
+```
+
+```bash
+# Run a benchmark comparison
+./file_processor --files sales.csv logs.log -b
+```
+
+***
 
 ## Testing
-The project uses ExUnit for automated testing. It includes tests for the main module, individual processors, and the benchmark module.
-**Run tests**:
+
+The project maintains a high standard of quality with **50+ automated tests** covering edge cases, crash recovery, and data validation.
+
+Run tests:
+
 ```bash
 mix test
 ```
 
----
+***
 
-## Changes
-### Added
-* **Error Tracking:** Introduced detailed error logging for `CsvProcessor`, `JasonProcessor`, and `LogProcessor`. The system now captures specific line numbers and failure reasons.
-* **Validation Logic:** * New `validate_date/1` using Regex pattern matching.
-    * New `validate_user/1` (checks ID type and username existence) and `validate_session/1` (ensures positive duration) in `JasonProcessor`.
-* **Parallel Processing Enhancements:**
-    * Added support for `timeout` and `max_retries` configurations via a new `config` map.
-    * Implemented `check_completion/4` to dynamically monitor worker status and handle process termination.
-* **Reporting & Analytics:**
-    * Added `Executive Summary` section to the final report.
-    * Added `Performance Analysis` section to compare sequential vs. parallel execution times.
-    * New `calculate_improvement/2` utility to determine performance speedup factors.
-    * New `add_consolidated/2` function to calculate totals across all CSV files.
-* **CLI Options:** Added `--timeout` and `--retries` flags to the executable `main/1` function.
+## Data Validation Specs
 
-### Changed
-* **Parallel Coordinator Refactor:**
-    * Updated `init` and `start` to handle the new configuration map.
-    * Optimized worker management: The `state` now uses a `%{PID => file}` map for better tracking and monitoring.
-    * Refactored the main `loop/2` to handle global timeouts and individual worker failures gracefully.
-* **Processor Improvements:**
-    * **CSV:** `process_lines/3` now tracks the current line index for precise error reporting.
-    * **CSV:** Renamed internal validation functions (e.g., `validate_float/2`, `validate_int/2`) for better clarity and added descriptive error messages.
-    * **Logging:** Improved error message clarity across all parsing modules.
-* **Metrics & Benchmarking:**
-    * `measure/1` now collects system memory usage (`:erlang.memory`) and process counts (`:erlang.system_info`).
-    * `update_metrics_map/2` updated to merge detailed parsing errors into the final results.
-* **Report Generation:**
-    * `format_entry/2` converted to a multi-clause function for specialized formatting per data type.
-    * `add_errors/2` now differentiates between fatal system errors and individual line parsing errors.
+### **CSV**
 
-### Removed
-* **Redundant Parsers:** `parse_user/1` and `parse_session/1` in favor of the new validation logic.
-* **Cleaned up Logic:** `print_benchmark/2` and `get_keys_order/1` were removed as their functionality was integrated into the new reporting engine.
-* **State Cleanup:** Removed the `:results` key from the Coordinator state to favor a more direct worker-to-metrics flow.
+*   Validates date format `YYYY-MM-DD`
+*   Numeric types
+*   Required headers
 
-###ssh
+### **JSON**
+
+*   User structures (IDs, names)
+*   Session integrity (non-negative durations)
+
+### **LOG**
+
+*   Pattern:  
+    `YYYY-MM-DD HH:MM:SS [LEVEL] [COMPONENT] Message`
+
+***
+
+Developed with **Elixir & Phoenix**.
+
+***
+
+

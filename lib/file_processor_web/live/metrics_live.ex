@@ -27,7 +27,7 @@ defmodule FileProcessorWeb.MetricsLive do
   @doc """
   Handles all UI events including mode changes, file validation, and processing triggers.
   """
-  def handle_event("change_mode", %{"mode" => mode_str}, socket) do
+  def handle_event("validate", %{"mode" => mode_str}, socket) do
     {:noreply, assign(socket, mode: String.to_atom(mode_str))}
   end
 

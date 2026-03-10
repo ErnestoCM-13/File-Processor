@@ -1,33 +1,92 @@
+<%!-- File Processor Dashboard --%>
 <div class="max-w-4xl mx-auto p-8">
-  <h1 class="text-3xl font-bold mb-8">File Processor Dashboard</h1>
+  <h1 class="text-3xl font-bold mb-8 text-gray-800 tracking-tight">File Processor Dashboard</h1>
 
-  <%!-- Processing Options Form --%>
   <div class="bg-white p-8 rounded-2xl shadow-sm border mb-8">
-    <div class="flex items-center gap-2 mb-6">
-      <div class="p-2 bg-blue-50 rounded-lg">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </div>
-      <h2 class="text-xl font-bold text-gray-800">Processing Options</h2>
-    </div>
 
-    <%!-- CRITICAL: The ID allows LiveView to track changes correctly --%>
-    <form id="file-processor-form" phx-change="change_mode" phx-submit="start_processing" class="space-y-4">
-      <p class="text-sm font-bold text-gray-700 mb-2">Processing mode</p>
-      
+    <form id="processor-form" phx-change="validate" phx-submit="start_processing" class="space-y-8">
+    
+      <div class="space-y-4 mb-8">
+        <label class="text-sm font-bold text-gray-700 uppercase tracking-wider">Source Files</label>
+        
+        <%!-- DROP ZONE:    --%>
+        <div 
+          class="relative border-2 border-dashed border-gray-200 rounded-2xl p-10 text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all cursor-pointer group"
+          phx-drop-target={@uploads.files_input.ref}
+        >
+          <div class="flex flex-col items-center">
+            <div class="p-4 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-300">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p class="mt-4 text-sm font-medium text-gray-600 italic">Drag and drop your files here</p>
+            <p class="text-xs text-gray-400 mt-1 font-mono">Accepted: .csv, .json, .log</p>
+            
+            <%!-- LIVE FILE INPUT: --%>
+            <.live_file_input upload={@uploads.files_input} class="absolute inset-0 w-full h-full cursor-pointer opacity-0" />           
+            <p class="text-indigo-600 font-bold mt-2 text-sm">Click to browse or drag files here</p>
+          </div>
+        </div>
+        
+        <%!-- Upload Queue List --%>
+        <div id="upload-queue" class="space-y-2 mt-4">
+          <%= for entry <- @uploads.files_input.entries do %>
+            <div id={"entry-#{entry.ref}"} class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm animate-in slide-in-from-left-2">
+              <div class="flex items-center gap-3">
+                <span class="text-xs font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded">
+                  <%= Path.extname(entry.client_name) |> String.upcase() |> String.replace(".", "") %>
+                </span>
+                <span class="text-sm font-medium text-gray-700"><%= entry.client_name %></span>
+              </div>
+
+              <div class="flex items-center gap-4">
+                <%!-- Individual progress bar --%>
+                <div class="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div class="h-full bg-indigo-500 transition-all duration-300" style={"width: #{entry.progress}%"}></div>
+                </div>
+                <%!-- Cancel button --%>
+                <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} class="text-gray-400 hover:text-red-500 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <%!-- Error handling for each file entry --%>
+            <%= for err <- upload_errors(@uploads.files_input, entry) do %>
+              <p class="text-red-500 text-xs mt-1"><%= Phoenix.Naming.humanize(err) %></p>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <hr class="my-8 border-gray-100" />
+
+      <%!-- Processing Options Form --%>
+      <div class="flex items-center gap-2 mb-4">
+        <div class="p-2 bg-blue-50 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-800 tracking-tight">Processing Options</h2>
+      </div>
+
+      <%!-- Mode Selector: Uses 'mode' as name to be captured in params --%>
       <div class="grid grid-cols-1 gap-3">
         <%= for {mode_val, title, desc} <- [
           {:sequential, "Sequential", "Process file by file"},
           {:parallel, "Parallel", "Process using Elixir processes"},
           {:benchmark, "Benchmark", "Compares modes"}
         ] do %>
-          <label id={"label-#{mode_val}"} class={"relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all #{if @mode == mode_val, do: "border-blue-500 bg-blue-50/50", else: "border-gray-100 hover:border-gray-200"}"}>
+          <label class={"relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all #{if @mode == mode_val, do: "border-blue-500 bg-blue-50/50 shadow-sm", else: "border-gray-100 hover:border-gray-200"}"}>
             <input type="radio" name="mode" value={mode_val} checked={@mode == mode_val} class="sr-only" />
             <span class="font-bold text-gray-800"><%= title %></span>
             <span class="text-xs text-gray-400 mt-1"><%= desc %></span>
-            <div :if={@mode == mode_val} class="absolute top-4 right-4 text-blue-500">
+            <div :if={@mode == mode_val} class="absolute top-4 right-4 text-blue-500 animate-in zoom-in duration-200">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
               </svg>
@@ -36,45 +95,49 @@
         <% end %>
       </div>
 
-<%!-- Step 2: Contextual Configuration --%>
-<div id="config-wrapper">
-  <%= if @mode != :sequential do %>
-    <div id="config-fields" class="grid grid-cols-2 gap-6 pt-4 animate-in fade-in duration-300">
-      <div class="space-y-2">
-        <label class="block text-sm font-bold text-gray-700">Max Workers:</label>
-        <input type="number" name="workers" value="4" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50" />
+      <%!-- Contextual Config --%>
+      <div id="config-wrapper">
+        <%= if @mode != :sequential do %>
+          <div id="config-fields" class="grid grid-cols-2 gap-6 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div class="space-y-2">
+              <label class="block text-sm font-bold text-gray-700">Max Workers:</label>
+              <input type="number" name="workers" value="4" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50 focus:ring-0 focus:border-blue-500 outline-none transition-all text-sm" />
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-bold text-gray-700">Timeout (ms):</label>
+              <input type="number" name="timeout" value="4000" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50 focus:ring-0 focus:border-blue-500 outline-none transition-all text-sm" />
+            </div>
+          </div>
+        <% end %>
       </div>
-      <div class="space-y-2">
-        <label class="block text-sm font-bold text-gray-700">Timeout (ms):</label>
-        <input type="number" name="timeout" value="4000" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50" />
-      </div>
-    </div>
-  <% end %>
-</div>
 
-      <button type="submit" disabled={@processing_started} class="w-full mt-6 py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all disabled:opacity-50">
+      <button 
+        type="submit" 
+        disabled={@processing_started or Enum.empty?(@uploads.files_input.entries)} 
+        class="w-full mt-6 py-4 bg-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98] transition-all disabled:opacity-50"
+      >
         <%= if @processing_started, do: "Processing...", else: "Start File Analysis" %>
       </button>
     </form>
   </div>
-
-  <%!-- Metrics Dashboard --%>
+  
+  <%!-- Section 2: Dashboard Metrics (Unified View)--%>
   <div :if={@processing_started or @all_done} id="metrics-dashboard" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-in zoom-in-95 duration-500">
     <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-t-green-500">
-      <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Processed</p>
+      <p class="text-xs font-bold text-gray-400 uppercase tracking-wider italic">Processed</p>
       <div :if={@processing_started && !@all_done} class="h-10 w-20 bg-gray-100 animate-pulse mt-2 rounded-lg"></div>
       <p :if={@all_done} class="text-4xl font-black text-gray-800 mt-1"><%= @stats.processed %></p>
     </div>
 
     <div class="bg-white p-6 rounded-2xl shadow-sm border-t-4 border-t-red-500">
-      <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Errors</p>
+      <p class="text-xs font-bold text-gray-400 uppercase tracking-wider italic">Errors</p>
       <div :if={@processing_started && !@all_done} class="h-10 w-20 bg-gray-100 animate-pulse mt-2 rounded-lg"></div>
       <p :if={@all_done} class="text-4xl font-black text-gray-800 mt-1"><%= @stats.errors %></p>
     </div>
 
     <div class="bg-white p-6 rounded-2xl shadow-sm border flex items-center justify-between">
        <div>
-         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Success Rate</p>
+         <p class="text-xs font-bold text-gray-400 uppercase tracking-wider italic">Success Rate</p>
          <p :if={@all_done} class="text-3xl font-black text-indigo-600 mt-1">
            <%= if @stats.total > 0, do: round(((@stats.processed - @stats.errors) / @stats.total) * 100), else: 0 %>%
          </p>
@@ -83,26 +146,38 @@
     </div>
   </div>
 
-  <%!-- File List --%>
+  <%!-- Section 3: Processed Files List --%>
   <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
     <div class="p-5 border-b bg-gray-50/50 flex justify-between items-center">
-      <h3 class="font-bold text-gray-800 text-lg">Processed Files</h3>
+      <h3 class="font-bold text-gray-800 text-lg tracking-tight italic text-blue-900">Processed Files</h3>
       <div class="flex gap-2">
-        <button disabled={!@all_done} class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white border shadow-sm hover:bg-gray-50 disabled:opacity-30">All</button>
-        <button disabled={!@all_done} class="px-4 py-1.5 text-xs font-bold rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 disabled:opacity-30">Errors</button>
+        <button disabled={!@all_done} class="px-4 py-1.5 text-xs font-bold rounded-lg bg-white border shadow-sm hover:bg-gray-50 disabled:opacity-30 transition-all">All</button>
+        <button disabled={!@all_done} class="px-4 py-1.5 text-xs font-bold rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 disabled:opacity-30 transition-all">Errors</button>
       </div>
     </div>
+
     <ul id="file-list" class="divide-y divide-gray-50">
-      <li :for={file <- @files} id={"file-#{file.name}"} class="p-5 flex justify-between items-center hover:bg-gray-50/50 transition-colors">
-        <div class="flex items-center gap-3">
-          <div class={"w-2 h-2 rounded-full #{if file.status == :ok, do: "bg-green-500", else: "bg-red-500"}"}></div>
-          <span class="text-sm font-medium text-gray-700"><%= file.name %></span>
-        </div>
-        <span class={"text-[10px] font-black px-2.5 py-1 rounded-md tracking-wider #{if file.status == :ok, do: "bg-green-100 text-green-700", else: "bg-red-100 text-red-700"}"}>
-          <%= String.upcase(Atom.to_string(file.status)) %>
-        </span>
+      <%= for file <- @files do %>
+        <li id={"file-#{file.name}"} class="p-5 flex justify-between items-center hover:bg-gray-50/50 animate-in slide-in-from-bottom-2 duration-300">
+          <div class="flex items-center gap-3">
+            <div class={"w-2 h-2 rounded-full #{if file.status == :ok, do: "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]", else: "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]"}"}></div>
+            <span class="text-sm font-medium text-gray-700 italic"><%= file.name %></span>
+          </div>
+          <span class={"text-[10px] font-black px-2.5 py-1 rounded-md tracking-widest shadow-sm #{if file.status == :ok, do: "bg-green-100 text-green-700", else: "bg-red-100 text-red-700"}"}>
+            <%= String.upcase(Atom.to_string(file.status)) %>
+          </span>
+        </li>
+      <% end %>
+
+      <li :if={@processing_started && Enum.empty?(@files)} class="p-12 text-center bg-gray-50/30">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent mb-4"></div>
+        <p class="text-gray-400 text-sm animate-pulse font-medium italic">Initializing analysis engine...</p>
       </li>
-      <li :if={Enum.empty?(@files)} class="p-12 text-center text-gray-400 italic">
+
+      <li :if={!@processing_started && Enum.empty?(@files)} class="p-16 text-center text-gray-400 italic bg-gray-50/30">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
         No files processed yet.
       </li>
     </ul>

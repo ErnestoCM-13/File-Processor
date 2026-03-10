@@ -1,4 +1,4 @@
-defmodule FileProcessor.JsonProcessor do
+defmodule FileProcessor.Formats.Json do
   @moduledoc """
   Specialized processor for JSON files
   This module is delegated by `FileProcessor` when a `.json` file is detected.
@@ -21,6 +21,8 @@ defmodule FileProcessor.JsonProcessor do
   - Error count and details
   """
 
+  @behaviour FileProcessor.Formats.Processor
+
   # ----------------------------------------------------------------------
   # PUBLIC API
   # ----------------------------------------------------------------------
@@ -40,7 +42,8 @@ defmodule FileProcessor.JsonProcessor do
   Retorns `{:ok, metrics}` on succes or `{:error, reason}` if the file
   cannot be read or decoded.
   """
-  def process_json_file(json_file_path) do
+  @impl true
+  def process(json_file_path) do
     with {:ok, raw_content} <- File.read(json_file_path),
          {:ok, decoded_json} <- Jason.decode(raw_content) do
 

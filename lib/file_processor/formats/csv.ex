@@ -1,4 +1,4 @@
-defmodule FileProcessor.CsvProcessor do
+defmodule FileProcessor.Formats.Csv do
   @moduledoc """
   Specialized processor for CSV files.
   This module is delegated by `FileProcessor` when a `.csv` file is detected.
@@ -24,6 +24,8 @@ defmodule FileProcessor.CsvProcessor do
   - Error count and details
   """
 
+  @behaviour FileProcessor.Formats.Processor
+
   # CSV parser configuration:
   # - "," as column separator
   # - "°" as escape character
@@ -43,7 +45,8 @@ defmodule FileProcessor.CsvProcessor do
   3. Validate and accumulate row data
   4. Calcule final metrics
   """
-  def process_csv_file(csv_file_path) do
+  @impl true
+  def process(csv_file_path) do
     parsed_lines =
       csv_file_path
       |> File.stream!()

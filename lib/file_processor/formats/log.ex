@@ -1,4 +1,4 @@
-defmodule FileProcessor.LogProcessor do
+defmodule FileProcessor.Formats.Log do
   @moduledoc """
   Specialized processor for CSV files.
   This module is delegated by `FileProcessor`when a `.log` file is detected.
@@ -13,6 +13,8 @@ defmodule FileProcessor.LogProcessor do
   - peak logging hour
   - Error count and details for malformed lines
   """
+
+  @behaviour FileProcessor.Formats.Processor
 
   # ----------------------------------------------------------------------
   # PUBLIC API
@@ -30,7 +32,8 @@ defmodule FileProcessor.LogProcessor do
   4. Accumulate line data.
   5. Calculate final metrics
   """
-  def process_log_files(log_file_path) do
+  @impl true
+  def process(log_file_path) do
     with {:ok, file_content} <- File.read(log_file_path) do
       lines = String.split(file_content, "\n", trim: true)
 

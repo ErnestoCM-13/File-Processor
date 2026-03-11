@@ -102,4 +102,21 @@ defmodule FileProcessorWeb.MetricsLive do
     # Placeholder for ResultsCache persistence
     {:noreply, assign(socket, all_done: true, processing_started: false)}
   end
+
+  # --- HELPERS ---
+
+  @doc """
+  Formats incoming data from the processing engine.
+  Ensures the frontend always receives the expected keys.
+  """
+  defp format_process_result(data) do
+    %{
+      name: Map.get(data, :name, "Unknown File"),
+      status: Map.get(data, :status, :ok),
+      current: Map.get(data, :current, 0),
+      total: Map.get(data, :total, 1),
+      size: Map.get(data, :size, "0 KB"),
+      timestamp: Calendar.strftime(DateTime.utc_now(), "%H:%M:%S")
+    }
+  end
 end

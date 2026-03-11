@@ -3,6 +3,37 @@
   <h1 class="text-3xl font-bold mb-8 text-gray-800 tracking-tight italic">File Processor Dashboard</h1>
 
   <%!-- 
+  GLOBAL PROGRESS SESSION 
+  Visible only during active processing. 
+  Calculates percentage based on @stats.processed and @stats.total.
+--%>
+<div :if={@processing_started and !@all_done} class="mb-6 animate-in fade-in duration-500">
+  <div class="flex justify-between items-end mb-2">
+    <div class="flex flex-col">
+      <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest italic">
+        System Analysis in Progress
+      </span>
+      <span class="text-2xl font-black text-gray-800">
+        <%= round((@stats.processed / max(@stats.total, 1)) * 100) %>%
+      </span>
+    </div>
+    <span class="text-xs font-bold text-gray-400 italic">
+      <%= @stats.processed %> / <%= @stats.total %> Files
+    </span>
+  </div>
+  
+  <%!-- The actual progress track --%>
+  <div class="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
+    <div 
+      class="h-full bg-indigo-600 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(79,70,229,0.4)]" 
+      style={"width: #{(@stats.processed / max(@stats.total, 1)) * 100}%"}
+    >
+      <%!-- Subtle light effect moving through the bar --%>
+      <div class="w-full h-full animate-pulse bg-white/20"></div>
+    </div>
+  </div>
+</div>    
+  <%!-- 
     SECTION 1: File Upload & Configuration
     Disappears completely when processing starts to focus on results.
   --%>

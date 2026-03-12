@@ -142,30 +142,28 @@ defmodule FileProcessorWeb.MetricsLive do
 
   def handle_info({:process_batch, file_list, config}, socket) do
     total = Enum.count(file_list)
-    parent = self() # We need the LiveView PID for the tasks to send messages back
+    parent = self()
 
-    # Start a separate process so we don't block the LiveView while waiting for the stream
     Task.start(fn ->
       file_list
       |> Enum.with_index(1)
       |> Task.async_stream(
-        fn {file, index} ->
-          # SIMULATION: Replace this with real file parsing later
-          Process.sleep(1000)
+        fn {%{name: name, path: path}, index} ->
+          # REAL ANALYSIS: No more random status!
+          {status, detail} = parse_file_content(path, name)
 
-          # Send update to PubSub or self
           send(parent, {:file_processed, %{
-            name: file.name,
-            status: (if rem(index, 4) == 0, do: :error, else: :ok),
+            name: name,
+            status: status,
+            detail: detail, # We'll show this in the UI
             current: index,
             total: total
           }})
         end,
         max_concurrency: config.workers,
-        timeout: config.timeout,
-        on_timeout: :kill_task # If it hangs, kill it to free the worker
+        timeout: config.timeout
       )
-      |> Stream.run() # This triggers the execution
+      |> Stream.run()
 
       send(parent, {:all_done, %{}})
     end)
@@ -184,5 +182,52 @@ defmodule FileProcessorWeb.MetricsLive do
       size: Map.get(data, :size, "0 KB"),
       timestamp: Calendar.strftime(DateTime.utc_now(), "%H:%M:%S")
     }
+  end
+
+  # --- PARSING LOGIC ---
+
+  @doc """
+  Main entry point for file analysis.
+  Routes the file to the correct parser based on extension.
+  """
+  defp parse_file_content(path, name) do
+    extension = path |> Path.extname() |> String.downcase()
+
+    case extension do
+      ".csv" -> parse_csv(path)
+      ".json" -> parse_json(path)
+      ".log" -> parse_log(path)
+      _ -> {:error, "Unsupported format"}
+    end
+  end
+
+  defp parse_csv(path) do
+    # Counting lines in a CSV as a basic metric
+    line_count = path |> File.stream!() |> Enum.count()
+    {:ok, "Rows detected: #{line_count}"}
+  end
+
+  defp parse_log(path) do
+    # Searching for the word "ERROR" in the log file
+    error_count =
+      path
+      |> File.stream!()
+      |> Enum.count(&(String.contains?(&1, "ERROR") or String.contains?(&1, "FAIL")))
+
+    if error_count > 0,
+      do: {:warning, "Found #{error_count} critical events"},
+      else: {:ok, "No errors found"}
+  end
+
+  defp parse_json(path) do
+    # Basic validation: is it a valid JSON?
+    case File.read(path) do
+      {:ok, content} ->
+        case Jason.decode(content) do
+          {:ok, _data} -> {:ok, "Valid JSON structure"}
+          {:error, _} -> {:error, "Invalid JSON syntax"}
+        end
+      {:error, _} -> {:error, "Read error"}
+    end
   end
 end

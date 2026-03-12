@@ -21,7 +21,7 @@ defmodule FileProcessorWeb.MetricsLive do
         max_file_size: 10_000_000
       )
 
-    {:ok, socket}
+    {:ok, assign(socket, :total_rows, 0)} # Initialize row counter
   end
 
   # --- CALLBACKS: handle_event ---
@@ -82,6 +82,18 @@ defmodule FileProcessorWeb.MetricsLive do
       end
     end
 
+    #Documentation: Clears all accumulated metrics, file lists, and row counters.
+
+  def handle_event("reset_processor", _params, socket) do
+    {:noreply,
+    socket
+    |> assign(:all_done, false)
+    |> assign(:processing_started, false)
+    |> assign(:files, []) # Clears the file list
+    |> assign(:total_rows, 0) # RESET: The row counter goes back to zero
+    |> assign(:stats, %{total: 0, processed: 0, errors: 0, current: 0})}
+  end
+
     # Helper to format size in a human-readable way
     defp format_size(bytes) do
       cond do
@@ -121,6 +133,12 @@ defmodule FileProcessorWeb.MetricsLive do
   def handle_info({:file_processed, data}, socket) do
     formatted_data = format_process_result(data)
 
+    new_rows =
+    case Regex.run(~r/\d+/, formatted_data.detail) do
+      [number_str] -> socket.assigns.total_rows + String.to_integer(number_str)
+      _ -> socket.assigns.total_rows
+    end
+
     # Logic to update stats based on formatted_data
     new_errors = if formatted_data.status == :error, do: socket.assigns.stats.errors + 1, else: socket.assigns.stats.errors
 
@@ -131,7 +149,10 @@ defmodule FileProcessorWeb.MetricsLive do
       errors: new_errors
     }
 
-    {:noreply, assign(socket, stats: new_stats, files: [formatted_data | socket.assigns.files])}
+    {:noreply, socket
+      |> assign(stats: new_stats)
+      |> assign(total_rows: new_rows)
+      |> assign(files: [formatted_data | socket.assigns.files])}
   end
 
   def handle_info({:all_done, _final_metrics}, socket) do

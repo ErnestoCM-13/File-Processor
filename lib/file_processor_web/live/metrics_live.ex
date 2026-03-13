@@ -8,6 +8,7 @@ defmodule FileProcessorWeb.MetricsLive do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(FileProcessor.PubSub, "processor_updates")
     end
+
     socket =
       socket
       |> assign(:processing_started, false)
@@ -15,13 +16,15 @@ defmodule FileProcessorWeb.MetricsLive do
       |> assign(:mode, :sequential)
       |> assign(:stats, %{total: 0, processed: 0, errors: 0, current: 0})
       |> assign(:files, [])
+      |> assign(:total_rows, 0)      # Tu contador de la Semana 2
+      |> assign(:expanded_file, nil) # NUEVO: Para el Inspector de Errores contextual [cite: 339]
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
         max_file_size: 10_000_000
       )
 
-    {:ok, assign(socket, :total_rows, 0)} # Initialize row counter
+    {:ok, socket}
   end
 
   # --- CALLBACKS: handle_event ---
@@ -81,6 +84,11 @@ defmodule FileProcessorWeb.MetricsLive do
         |> assign(:stats, %{total: Enum.count(file_data), processed: 0, errors: 0, current: 0})}
       end
     end
+
+  def handle_event("toggle_error_details", %{"name" => name}, socket) do
+    new_expanded = if socket.assigns.expanded_file == name, do: nil, else: name
+    {:noreply, assign(socket, expanded_file: new_expanded)}
+  end
 
     #Documentation: Clears all accumulated metrics, file lists, and row counters.
 

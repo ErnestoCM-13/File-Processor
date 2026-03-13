@@ -52,40 +52,49 @@ defmodule FileProcessorWeb.MetricsLive do
   It uses the user-defined concurrency (workers) and timeout.
   """
 
+  @doc """
+  Triggers the file processing engine.
+  Documentation: Instead of manual tasks, we invoke the Parallel module
+  which will handle broadcasting via Notifier.
+  """
+  @doc """
+  Triggers the processing engine by ensuring file persistence
+  and invoking the Parallel coordinator.
+  """
   def handle_event("start_processing", params, socket) do
-    # 1. Parse and validate workers
+    # 1. Consume and persist uploaded files to prevent 'no such file' errors
+    file_data = consume_uploaded_entries(socket, :files_input, fn %{path: path}, entry ->
+      # Create a persistent destination path in the system temp directory
+      dest = Path.join(System.tmp_dir!(), entry.client_name)
+
+      # Copy file to destination so it remains available for the background workers
+      File.cp!(path, dest)
+
+      # Return the format expected by Parallel.run/3: {path, name}
+      {:ok, {dest, entry.client_name}}
+    end)
+
+    # 2. Extract configuration from UI parameters
     workers = String.to_integer(Map.get(params, "workers", "4"))
     timeout = String.to_integer(Map.get(params, "timeout", "5000"))
 
-    cond do
-      # Check if there are no files selected
-      Enum.empty?(socket.assigns.uploads.files_input.entries) ->
-        {:noreply, put_flash(socket, :error, "No files detected. Please upload at least one file.")}
+    # 3. Invoke the backend logic from your teammate's branch
+    # We use Task.start to prevent blocking the LiveView process
+    Task.start(fn ->
+      FileProcessor.Execution.Parallel.run(
+        file_data,
+        %FileProcessor.Core.Metrics{},
+        %{max_workers: workers, timeout: timeout}
+      )
+    end)
 
-      # Security check: Max 10 workers allowed
-      workers > 10 ->
-        {:noreply, put_flash(socket, :error, "Security limit exceeded: Maximum 10 workers allowed.")}
-
-      # Security check: Min 1 worker required
-      workers < 1 ->
-        {:noreply, put_flash(socket, :error, "At least 1 worker is required for analysis.")}
-
-      true ->
-        # Proceed with file consumption
-        file_data = consume_uploaded_entries(socket, :files_input, fn _meta, entry ->
-          {:ok, %{name: entry.client_name, size: format_size(entry.client_size)}}
-        end)
-
-        # Trigger the engine
-        send(self(), {:process_batch, file_data, %{workers: workers, timeout: timeout}})
-
-        {:noreply,
-        socket
-        |> assign(:processing_started, true)
-        |> assign(:stats, %{total: Enum.count(file_data), processed: 0, errors: 0, current: 0})}
-      end
-    end
-
+    {:noreply,
+    socket
+    |> assign(:processing_started, true)
+    |> assign(:files, []) # Clear list for new results
+    |> assign(:stats, %{total: Enum.count(file_data), processed: 0, errors: 0, current: 0})}
+  end
+  
   def handle_event("toggle_error_details", %{"name" => name}, socket) do
     new_expanded = if socket.assigns.expanded_file == name, do: nil, else: name
     {:noreply, assign(socket, expanded_file: new_expanded)}
@@ -146,34 +155,42 @@ defmodule FileProcessorWeb.MetricsLive do
     {:noreply, socket}
   end
 
-  def handle_info({:file_processed, data}, socket) do
-    formatted_data = format_process_result(data)
+  @doc """
+  Handles the real-time broadcast from the Parallel Coordinator.
+  Documentation: Matches the exact structure sent by Notifier.broadcast_file_progress.
+  """
+  def handle_info(%{event: "file_processed", payload: payload}, socket) do
+    # Payload contains: %{mode: _, name: _, status: _, current: _, total: _}
 
-    new_rows =
-    case Regex.run(~r/\d+/, formatted_data.detail) do
-      [number_str] -> socket.assigns.total_rows + String.to_integer(number_str)
-      _ -> socket.assigns.total_rows
-    end
-
-    # Logic to update stats based on formatted_data
-    new_errors = if formatted_data.status == :error, do: socket.assigns.stats.errors + 1, else: socket.assigns.stats.errors
+    # 1. Update global stats
+    new_errors = if payload.status == :error, do: socket.assigns.stats.errors + 1, else: socket.assigns.stats.errors
 
     new_stats = %{
       socket.assigns.stats |
-      processed: formatted_data.current,
-      total: formatted_data.total,
+      processed: payload.current,
+      total: payload.total,
       errors: new_errors
     }
 
-    {:noreply, socket
-      |> assign(stats: new_stats)
-      |> assign(total_rows: new_rows)
-      |> assign(files: [formatted_data | socket.assigns.files])}
+    # 2. Add file to the list for the UI
+    new_file = %{
+      name: payload.name,
+      status: payload.status,
+      detail: "Processed via #{payload.mode}", # Using the mode sent by the back
+      timestamp: Calendar.strftime(DateTime.utc_now(), "%H:%M:%S")
+    }
+
+    {:noreply,
+    socket
+    |> assign(stats: new_stats)
+    |> assign(files: [new_file | socket.assigns.files])}
   end
 
-  def handle_info({:all_done, _final_metrics}, socket) do
-    # Placeholder for ResultsCache persistence
-    {:noreply, assign(socket, all_done: true, processing_started: false)}
+  @doc """
+  Handles the completion event.
+  """
+  def handle_info(%{event: "all_done", payload: _payload}, socket) do
+    {:noreply, assign(socket, all_done: true)}
   end
 
 

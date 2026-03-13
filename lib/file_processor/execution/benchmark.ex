@@ -27,19 +27,20 @@ defmodule FileProcessor.Execution.Benchmark do
     parallel = Map.get(config, :parallel_module, Parallel)
 
     # Sequential benchmark
-    {seq_bench, _seq_results} = measure(fn ->
-      sequential.run(files, Metrics.new(), config)
+    task_seq = Task.async(fn ->
+      measure(fn -> sequential.run(files, Metrics.new(), config) end)
     end)
 
     # Parallel benchmark
-    {par_bench, par_results} = measure(fn ->
-      parallel.run(files, Metrics.new(), config)
+    task_par = Task.async(fn ->
+      measure(fn -> parallel.run(files, Metrics.new(), config) end)
     end)
 
-    performance_data = calculate_performance(seq_bench, par_bench)
-    par_results_with_perf = Metrics.add_performance_data(par_results, performance_data)
+    {seq_bench, _seq_results} = Task.await(task_seq, :infinity)
+    {par_bench, par_results} = Task.await(task_par, :infinity)
 
-    par_results_with_perf
+    performance_data = calculate_performance(seq_bench, par_bench)
+    Metrics.add_performance_data(par_results, performance_data)
   end
 
   @doc """
@@ -66,7 +67,7 @@ defmodule FileProcessor.Execution.Benchmark do
     end_time = System.monotonic_time(:microsecond)
     end_memory = get_process_memory()
 
-    memory_used_mb = max(0.0, Float.round((end_memory - start_memory) / 1_048_576, 2))
+    memory_used_mb = max(0.0, Float.round((end_memory - start_memory) / 1_048_576, 4))
     total_time_seconds = (end_time - start_time) / 1_000_000
 
     {processes_total, max_processes_used} =

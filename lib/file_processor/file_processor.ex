@@ -17,6 +17,7 @@ defmodule FileProcessor do
   alias FileProcessor.Core.{Normalization, Metrics}
   alias FileProcessor.Execution.{Parallel, Sequential, Benchmark}
   alias FileProcessor.Report.Generator
+  alias FileProcessor.Execution.Notifier
 
   # ----------------------------------------------------------------------
   # PUBLIC API
@@ -52,7 +53,11 @@ defmodule FileProcessor do
 
     metrics = execute(execution_mode, files, config)
 
-    generator.build(metrics, execution_mode, config)
+    final_results = generator.build(metrics, execution_mode, config)
+
+    Notifier.broadcast_completition(final_results)
+
+    final_results
   end
 
   # ----------------------------------------------------------------------

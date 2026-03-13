@@ -12,6 +12,7 @@ defmodule FileProcessor.Execution.Parallel do
 
   alias FileProcessor.Core.{Dispatcher, Metrics}
   alias FileProcessor.Execution.Worker
+  alias FileProcessor.Execution.Notifier
 
   @default_timeout 10_000
   @default_max_workers 50
@@ -116,9 +117,12 @@ defmodule FileProcessor.Execution.Parallel do
       # ----------------------------------------------------------------------
       {:worker_done, worker_pid, {_file_path, file_name}, result} ->
         new_completed_count = state.completed_files + 1
-        updated_metrics = Metrics.add_result(accumulated_metrics, format_result(file_name, result))
+        result_formatted = format_result(file_name, result)
+        updated_metrics = Metrics.add_result(accumulated_metrics, result_formatted)
 
         print_progress(file_name, new_completed_count, state.total_files)
+
+        Notifier.broadcast_file_progress(:parallel, file_name, result_formatted, new_completed_count, state.total_files)
 
         state
         |> remove_worker(worker_pid)
@@ -132,10 +136,13 @@ defmodule FileProcessor.Execution.Parallel do
         if Map.has_key?(state.active_workers, worker_pid) do
           {_file_path, file_name} = Map.get(state.active_workers, worker_pid)
           new_completed_count = state.completed_files + 1
-          updated_metrics =
-            Metrics.add_result(accumulated_metrics, {:error, file_name, "Worker crashed: #{inspect(reason)}"})
+
+          error_result = {:error, file_name, "Worker crashed: #{inspect(reason)}"}
+          updated_metrics = Metrics.add_result(accumulated_metrics, error_result)
 
           IO.puts("Error: Worker for #{inspect(file_name)} crashed")
+
+          Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files)
 
           state
           |> remove_worker(worker_pid)
@@ -154,9 +161,12 @@ defmodule FileProcessor.Execution.Parallel do
           |> Map.values()
           |> Enum.reduce(accumulated_metrics, fn {_file_path, file_name}, acc ->
             IO.puts("Error: Worker for #{inspect(file_name)} take too long")
+            new_completed_count = state.completed_files + 1
+            error_result = {:error, file_name, "Timeout exceeded"}
+            Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files)
             Metrics.add_result(
               acc,
-              {:error, file_name, "Timeout exceeded"})
+              error_result)
           end)
           |> Map.put(:processes_used, state.total_files)
 

@@ -7,6 +7,7 @@ defmodule FileProcessor.Execution.Sequential do
   """
 
   alias FileProcessor.Core.{Dispatcher, Metrics}
+  alias FileProcessor.Execution.Notifier
 
   # ----------------------------------------------------------------------
   # EXECUTION STRATEGY
@@ -30,16 +31,29 @@ defmodule FileProcessor.Execution.Sequential do
   def run(files, %Metrics{} = acc_metrics, config) do
     dispatcher = Map.get(config, :dispatcher_module, Dispatcher)
 
-    Enum.reduce(files, acc_metrics, fn {path, name}, current_acc_metrics ->
+
+    total = Enum.count(files)
+
+    # Cambiamos reduce por reduce_indexed (o usamos with_index)
+    # para tener el contador del progreso
+    files
+    |> Enum.with_index(1)
+    |> Enum.reduce(acc_metrics, fn {{path, name}, index}, current_acc_metrics ->
       extension = Path.extname(name)
-      case dispatcher.get_processor(extension) do
+
+      # 1. Procesamiento
+      result_to_add = case dispatcher.get_processor(extension) do
         {:ok, processor} ->
           result = processor.process(path)
-          Metrics.add_result(current_acc_metrics, format_result(name, result))
+          format_result(name, result)
 
         {:error, reason} ->
-           Metrics.add_result(current_acc_metrics, format_result(name, {:error, reason}))
+          format_result(name, {:error, reason})
       end
+
+      Notifier.broadcast_file_progress(:sequential, name, result_to_add, index, total)
+
+      Metrics.add_result(current_acc_metrics, result_to_add)
     end)
   end
 

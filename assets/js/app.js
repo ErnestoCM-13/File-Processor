@@ -40,6 +40,37 @@ topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
 
+// Documentation: Handles the animated counting effect for dashboard metrics
+// as results flow in via PubSub.
+let Hooks = {}
+Hooks.CountUp = {
+  mounted() {
+    this.animate()
+  },
+  updated() {
+    this.animate()
+  },
+  animate() {
+    const target = parseInt(this.el.getAttribute("data-target"))
+    const current = parseInt(this.el.innerText) || 0
+    const duration = 1000 // Animation lasts 1 second
+    const stepTime = 50
+
+    if (current < target) {
+      const increment = Math.ceil((target - current) / (duration / stepTime))
+      const timer = setInterval(() => {
+        const now = parseInt(this.el.innerText) || 0
+        if (now >= target) {
+          this.el.innerText = target
+          clearInterval(timer)
+        } else {
+          this.el.innerText = now + increment
+        }
+      }, stepTime)
+    }
+  }
+}
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
 

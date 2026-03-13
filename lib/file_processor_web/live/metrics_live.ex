@@ -16,8 +16,9 @@ defmodule FileProcessorWeb.MetricsLive do
       |> assign(:mode, :sequential)
       |> assign(:stats, %{total: 0, processed: 0, errors: 0, current: 0})
       |> assign(:files, [])
-      |> assign(:total_rows, 0)      # Tu contador de la Semana 2
-      |> assign(:expanded_file, nil) # NUEVO: Para el Inspector de Errores contextual [cite: 339]
+      |> assign(:total_rows, 0)
+      |> assign(:current_filter, "all")
+      |> assign(:expanded_file, nil)
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
@@ -88,6 +89,13 @@ defmodule FileProcessorWeb.MetricsLive do
   def handle_event("toggle_error_details", %{"name" => name}, socket) do
     new_expanded = if socket.assigns.expanded_file == name, do: nil, else: name
     {:noreply, assign(socket, expanded_file: new_expanded)}
+  end
+
+  @doc """
+  Updates the UI filter state when a pill is clicked.
+  """
+  def handle_event("set_filter", %{"filter" => filter}, socket) do
+    {:noreply, assign(socket, :current_filter, filter)}
   end
 
     #Documentation: Clears all accumulated metrics, file lists, and row counters.

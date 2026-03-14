@@ -8,6 +8,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
   import FileProcessorWeb.SuccessToastComponent
   import FileProcessorWeb.ExecutiveSummaryComponent
 
+  alias FileProcessor.ResultsCache
+
   @doc """
   Initializes the dashboard state and configures allowed file uploads.
   """
@@ -27,9 +29,9 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
       |> assign(:expanded_file, nil)
-      |> assign(:results_id, nil)
-      # PREPARING: Empty state for the "Live Benchmark" race tracks
       |> assign(:benchmark_stats, %{sequential: %{processed: 0}, parallel: %{processed: 0}})
+      |> assign(:current_error_details, nil)
+      |> assign(:results_id, nil)
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
@@ -88,12 +90,36 @@ defmodule FileProcessorWeb.FileProcessorLive do
   end
 
   def handle_event("toggle_error_details", %{"name" => name}, socket) do
-    expanded =
-      if socket.assigns.expanded_file == name,
-        do: nil,
-        else: name
+      if socket.assigns.expanded_file == name do
+        {:noreply, assign(socket, expanded_file: nil, current_error_details: nil)}
+      else
 
-    {:noreply, assign(socket, :expanded_file, expanded)}
+        results_id = socket.assigns.results_id
+        metrics = ResultsCache.get_processment_results(results_id)
+
+        file_in_list = Enum.find(socket.assigns.files, fn f -> f.name == name end)
+
+        details =
+          case file_in_list.status do
+            :warning ->
+              ext = name |> Path.extname() |> String.trim_leading(".") |> String.to_atom()
+              metrics
+              |> Map.get(ext, [])
+              |> Enum.find(%{}, fn f -> f.file == name end)
+              |> get_in([:metrics, :error_details])
+
+            :error ->
+              metrics.errors
+              |> Enum.find(%{}, fn e -> e.file == name end)
+              |> Map.get(:reason)
+
+            _ -> nil
+          end
+
+        {:noreply, assign(socket,
+          expanded_file: name,
+          current_error_details: details)}
+      end
   end
 
   def handle_event("set_filter", %{"filter" => filter}, socket) do
@@ -168,7 +194,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
     total_files = summary_map[:successfully_processed_files] || 0
     results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
-    FileProcessor.ResultsCache.put_processment_results(results_id, metrics)
+    ResultsCache.put_processment_results(results_id, metrics)
 
     {:noreply,
       socket

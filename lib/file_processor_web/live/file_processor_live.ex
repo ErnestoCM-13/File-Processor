@@ -157,24 +157,22 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
   def handle_info(%{event: "all_done", payload: %{results: metrics_struct}}, socket) do
     metrics = Map.from_struct(metrics_struct)
+    summary_map =
+    if Map.has_key?(metrics, :executive_summary) and is_struct(metrics.executive_summary) do
+      Map.from_struct(metrics.executive_summary)
+    else
+      metrics[:executive_summary] || %{}
+    end
 
-    exec_summary =
-      case metrics.executive_summary do
-        %{} = struct -> Map.from_struct(struct)
-        map -> map
-      end
-
-    total_rows = exec_summary[:total_processed_rows] || 0
-
-    # Generate ID and save to Agent
-    results_id = "res_#{System.system_time(:millisecond)}"
+    total_files = summary_map[:successfully_processed_files] || 0
+    results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
     FileProcessor.ResultsCache.put_processment_results(results_id, metrics)
 
     {:noreply,
       socket
       |> assign(:all_done, true)
       |> assign(:processing_started, true)
-      |> assign(:total_rows, total_rows)
+      |> assign(:total_rows, total_files)
       |> assign(:results_id, results_id)
       |> assign(:final_metrics, metrics)
       |> assign(:stats, socket.assigns.stats) # Refresh stats just in case

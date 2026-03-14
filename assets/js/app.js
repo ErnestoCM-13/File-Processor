@@ -26,15 +26,6 @@ import { hooks as colocatedHooks } from "phoenix-colocated/file_processor";
 import topbar from "../vendor/topbar";
 import "../vendor/daisyui.js";
 
-const csrfToken = document
-  .querySelector("meta[name='csrf-token']")
-  .getAttribute("content");
-const liveSocket = new LiveSocket("/live", Socket, {
-  longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks },
-});
-
 // Show progress bar on live navigation and form submits
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
@@ -55,6 +46,7 @@ Hooks.CountUp = {
     const current = parseInt(this.el.innerText) || 0
     const duration = 1000 // Animation lasts 1 second
     const stepTime = 50
+    
 
     if (current < target) {
       const increment = Math.ceil((target - current) / (duration / stepTime))
@@ -71,8 +63,17 @@ Hooks.CountUp = {
   }
 }
 
+const csrfToken = document
+  .querySelector("meta[name='csrf-token']")
+  .getAttribute("content");
+const liveSocket = new LiveSocket("/live", Socket, {
+  longPollFallbackMs: 2500,
+  params: { _csrf_token: csrfToken },
+  hooks: { ...colocatedHooks, ...Hooks },
+});
 // connect if there are any LiveViews on the page
 liveSocket.connect();
+
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()

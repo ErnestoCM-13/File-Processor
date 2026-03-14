@@ -56,10 +56,13 @@ defmodule FileProcessor.Core.Normalization do
   defp get_path_and_name(%Plug.Upload{path: file_path, filename: file_name}),
     do: {file_path, file_name}
 
+  defp get_path_and_name({file_path, file_name}) when is_binary(file_path) and is_binary(file_name),
+    do: {file_path, file_name}
+
   defp get_path_and_name(file_path) when is_binary(file_path),
     do: {file_path, Path.basename(file_path)}
 
   # Error clause for invalid input format.
   defp get_path_and_name(invalid),
-    do: {:error, "Unsupported file format #{invalid}, expected a string path or a %Plug.Upload structure"}
+    do: {:error, "Unsupported file format #{invalid}, expected a string path, a two element tuple or a %Plug.Upload structure"}
 end

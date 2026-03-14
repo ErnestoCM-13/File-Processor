@@ -39,4 +39,11 @@
     all_done={@all_done}
   />
 
+  <%= if @all_done and @final_metrics do %>
+    <.executive_summary 
+      all_done={@all_done} 
+      final_metrics={@final_metrics} 
+    />
+  <% end %>
 </div>
+

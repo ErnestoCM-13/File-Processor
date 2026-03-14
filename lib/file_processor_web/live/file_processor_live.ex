@@ -6,6 +6,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
   import FileProcessorWeb.MetricsDashboardComponent
   import FileProcessorWeb.FileListComponent
   import FileProcessorWeb.SuccessToastComponent
+  import FileProcessorWeb.ExecutiveSummaryComponent
 
   @doc """
   Initializes the dashboard state and configures allowed file uploads.
@@ -19,6 +20,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:processing_started, false)
       |> assign(:all_done, false)
+      |> assign(:final_metrics, nil)
       |> assign(:mode, :sequential)
       |> assign(:stats, %{total: 0, processed: 0, errors: 0, warnings: 0})
       |> assign(:files, [])

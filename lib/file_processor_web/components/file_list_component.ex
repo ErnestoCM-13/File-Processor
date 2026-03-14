@@ -67,7 +67,7 @@ defmodule FileProcessorWeb.FileListComponent do
         <% end %>
 
         <%!-- SKELETON LOADER --%>
-        <li :if={@processing_started and not @all_done} class="p-5 flex justify-between items-center bg-gray-50/20 animate-pulse">
+        <li :if={@processing_started and not @all_done} id="skeleton-loader" class="p-5 flex justify-between items-center bg-gray-50/20 animate-pulse">
           <div class="flex items-center gap-3">
             <div class="w-2 h-2 rounded-full bg-indigo-300"></div>
             <div class="h-4 w-48 bg-gray-200 rounded"></div>

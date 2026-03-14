@@ -20,11 +20,14 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:processing_started, false)
       |> assign(:all_done, false)
       |> assign(:mode, :sequential)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0})
+      |> assign(:stats, %{total: 0, processed: 0, errors: 0, warnings: 0})
       |> assign(:files, [])
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
       |> assign(:expanded_file, nil)
+      |> assign(:results_id, nil)
+      # PREPARING: Empty state for the "Live Benchmark" race tracks
+      |> assign(:benchmark_stats, %{sequential: %{processed: 0}, parallel: %{processed: 0}})
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
@@ -72,11 +75,13 @@ defmodule FileProcessorWeb.FileProcessorLive do
     {:noreply,
       socket
       |> assign(:processing_started, true)
+      |> assign(:all_done, false)
       |> assign(:files, [])
       |> assign(:stats, %{
         total: Enum.count(files),
         processed: 0,
-        errors: 0
+        errors: 0,
+        warnings: 0
       })}
   end
 
@@ -108,38 +113,76 @@ defmodule FileProcessorWeb.FileProcessorLive do
   # ------------------------
 
   def handle_info(%{event: "file_processed", payload: payload}, socket) do
-    errors =
-      if payload.status == :error,
-        do: socket.assigns.stats.errors + 1,
-        else: socket.assigns.stats.errors
+    # FIX: Use an internal counter instead of payload.current to ensure we reach 100%
+    new_processed_count = socket.assigns.stats.processed + 1
 
-    stats = %{
+    current_errors = socket.assigns.stats.errors || 0
+    current_warnings = socket.assigns.stats.warnings || 0
+
+    # FIX: Separate stats into 3 states (ok, warning, error)
+    {new_errors, new_warnings} = case payload.status do
+      :error   -> {current_errors + 1, current_warnings}
+      :warning -> {current_errors, current_warnings + 1}
+      _        -> {current_errors, current_warnings}
+    end
+
+    # UPDATE: Benchmark tracks logic
+    new_benchmark = if socket.assigns.mode == :benchmark do
+      update_in(socket.assigns.benchmark_stats, [payload.mode, :processed], fn current -> current + 1 end)
+    else
+      socket.assigns.benchmark_stats
+    end
+
+    new_stats = %{
       total: payload.total,
-      processed: payload.current,
-      errors: errors
+      processed: new_processed_count,
+      errors: new_errors,     # This MUST be the same key used in the card
+      warnings: new_warnings  # We should add this too
     }
 
     file = %{
       name: payload.name,
       status: payload.status,
-      detail: "Processed via #{payload.mode}"
+      # Now we pass the reason to the UI for the Details inspector
+      reason: Map.get(payload, :reason, "Processed successfully."),
+      detail: "Engine: #{payload.mode}"
     }
 
     {:noreply,
       socket
-      |> assign(:stats, stats)
+      |> assign(:stats, new_stats)
+      |> assign(:benchmark_stats, new_benchmark)
       |> assign(:files, [file | socket.assigns.files])}
   end
 
-  def handle_info(%{event: "all_done", payload: %{results: metrics}}, socket) do
-    results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
+  def handle_info(%{event: "all_done", payload: %{results: metrics_struct}}, socket) do
+    metrics = Map.from_struct(metrics_struct)
 
+    exec_summary =
+      case metrics.executive_summary do
+        %{} = struct -> Map.from_struct(struct)
+        map -> map
+      end
+
+    total_rows = exec_summary[:total_processed_rows] || 0
+
+    # Generate ID and save to Agent
+    results_id = "res_#{System.system_time(:millisecond)}"
     FileProcessor.ResultsCache.put_processment_results(results_id, metrics)
 
     {:noreply,
       socket
-      |> assign(:results_id, results_id)
       |> assign(:all_done, true)
-      |> assign(:final_metrics, metrics)}
+      |> assign(:processing_started, true)
+      |> assign(:total_rows, total_rows)
+      |> assign(:results_id, results_id)
+      |> assign(:final_metrics, metrics)
+      |> assign(:stats, socket.assigns.stats) # Refresh stats just in case
+      |> push_event("refresh_counters", %{total: socket.assigns.stats.total})}
+      rescue
+      # 5. SAFETY NET: If something still fails, don't let the LiveView die
+      e ->
+        IO.inspect(e, label: "CRITICAL ERROR IN ALL_DONE")
+        {:noreply, assign(socket, :all_done, true)}
   end
 end

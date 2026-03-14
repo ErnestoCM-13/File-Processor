@@ -16,14 +16,14 @@ defmodule FileProcessorWeb.SuccessToastComponent do
         <div class="flex flex-col">
           <span class="text-[9px] font-bold text-gray-400 uppercase">Total Items</span>
           <span id="toast-total-rows" phx-hook="CountUp" data-target={@total_rows} class="text-lg font-black text-indigo-600">
-            0
+            <%= @total_rows %>
           </span>
         </div>
 
         <div class="flex flex-col">
           <span class="text-[9px] font-bold text-gray-400 uppercase">Files</span>
           <span id="toast-files-count" phx-hook="CountUp" data-target={@stats.processed} class="text-lg font-black text-gray-700">
-            0
+            <%= @stats.processed %>
           </span>
         </div>
       </div>

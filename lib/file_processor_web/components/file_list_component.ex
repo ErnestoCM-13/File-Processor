@@ -28,9 +28,10 @@ defmodule FileProcessorWeb.FileListComponent do
       </div>
 
       <%!-- FILE LIST --%>
-      <ul id="file-list" class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto" phx-update="stream" id="files-stream">
-        <%= for file <- Enum.filter(@files, fn f -> @filter == "all" or Atom.to_string(f.status) == @filter end) do %>
-          <li id={"file-#{file.name}"} class="border-b border-gray-50 last:border-0 overflow-hidden transition-all duration-300">
+      <ul id="files-stream-container" phx-update="stream" class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto" phx-update="stream" id="files-stream">
+        <%= for {dom_id, file} <- @streams.files_stream do %>
+          <li id={dom_id} class={["border-b border-gray-50 last:border-0 overflow-hidden transition-all duration-300",
+          (@filter != "all" and Atom.to_string(file.status) != @filter) && "hidden"]}>
             <div class="p-5 flex justify-between items-center hover:bg-gray-50/50">
               <div class="flex items-center gap-3">
                 <div class={"w-2.5 h-2.5 rounded-full #{case file.status do
@@ -55,7 +56,7 @@ defmodule FileProcessorWeb.FileListComponent do
                   phx-value-name={file.name}
                   class="text-[10px] font-black px-3 py-1 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-all uppercase tracking-widest"
                 >
-                  <%= if @expanded_file == file.name, do: "Close", else: "Details" %>
+                  <%= if @expanded_error_file == file.name, do: "Close", else: "Details" %>
                 </button>
                 <span class={"text-[10px] font-black px-2.5 py-1 rounded-md tracking-widest #{if file.status == :ok, do: "bg-green-100 text-green-700", else: "bg-red-100 text-red-700"}"}>
                   <%= String.upcase(Atom.to_string(file.status)) %>
@@ -64,33 +65,33 @@ defmodule FileProcessorWeb.FileListComponent do
             </div>
 
             <%!-- ERRORS INSPECTOR --%>
-            <div :if={@expanded_file == file.name and @current_error_details} class="bg-red-50/50 px-12 py-4 border-t border-red-100">
+            <div :if={@expanded_error_file == file.name and @current_error_details} id={"details-#{dom_id}"} class="bg-red-50/50 px-12 py-4 border-t border-red-100">
               <div class="text-[11px] font-mono">
                 <%= if is_list(@current_error_details) do %>
-                  <p class="text-indigo-700 font-bold mb-1 italic text-xs">Details:</p>
+                  <p class="text-indigo-700 font-bold mb-1 italic text-xs">Error lines:</p>
                   <ul class="list-disc pl-4 text-red-600 space-y-1">
                     <%= for detail <- @current_error_details do %>
                       <li><%= detail %></li>
                     <% end %>
                   </ul>
                 <% else %>
-                  <p class="text-red-700 font-bold uppercase tracking-widest text-[9px] mb-1">System Failure:</p>
+                  <p class="text-red-700 font-bold uppercase tracking-widest text-[9px] mb-1">Processing error:</p>
                   <p class="text-red-600 italic"><%= @current_error_details %></p>
                 <% end %>
               </div>
             </div>
           </li>
         <% end %>
-
-        <%!-- SKELETON LOADER --%>
-        <li :if={@processing_started and not @all_done} id="skeleton-loader" class="p-5 flex justify-between items-center bg-gray-50/20 animate-pulse">
-          <div class="flex items-center gap-3">
-            <div class="w-2 h-2 rounded-full bg-indigo-300"></div>
-            <div class="h-4 w-48 bg-gray-200 rounded"></div>
-          </div>
-          <div class="h-5 w-12 bg-gray-100 rounded"></div>
-        </li>
       </ul>
+
+      <%!-- SKELETON LOADER --%>
+      <div :if={@processing_started and not @all_done} id="skeleton-loader" class="p-5 flex justify-between items-center bg-gray-50/20 animate-pulse">
+        <div class="flex items-center gap-3">
+          <div class="w-2 h-2 rounded-full bg-indigo-300"></div>
+          <div class="h-4 w-48 bg-gray-200 rounded"></div>
+        </div>
+        <div class="h-5 w-12 bg-gray-100 rounded"></div>
+      </div>
     </div>
     """
   end

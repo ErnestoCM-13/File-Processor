@@ -26,9 +26,10 @@
   />
 
   <.file_list
-    files={@files}
+    id="my-file-list"
+    streams={@streams}
     filter={@current_filter}
-    expanded_file={@expanded_file}
+    expanded_error_file={@expanded_error_file}
     processing_started={@processing_started}
     all_done={@all_done}
     current_error_details={@current_error_details}

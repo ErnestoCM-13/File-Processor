@@ -24,11 +24,11 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:all_done, false)
       |> assign(:final_metrics, nil)
       |> assign(:mode, :sequential)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0, warnings: 0})
-      |> assign(:files, [])
+      |> assign(:stats, %{total: 0, processed: 0, errors: 0})
+      |> stream(:files_stream, [])
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
-      |> assign(:expanded_file, nil)
+      |> assign(:expanded_error_file, nil)
       |> assign(:benchmark_stats, %{sequential: %{processed: 0}, parallel: %{processed: 0}})
       |> assign(:current_error_details, nil)
       |> assign(:results_id, nil)
@@ -80,7 +80,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:processing_started, true)
       |> assign(:all_done, false)
-      |> assign(:files, [])
+      |> stream(:files_stream, [], reset: true)
       |> assign(:stats, %{
         total: Enum.count(files),
         processed: 0,
@@ -90,35 +90,39 @@ defmodule FileProcessorWeb.FileProcessorLive do
   end
 
   def handle_event("toggle_error_details", %{"name" => name}, socket) do
-      if socket.assigns.expanded_file == name do
-        {:noreply, assign(socket, expanded_file: nil, current_error_details: nil)}
+      results_id = socket.assigns.results_id
+      metrics = ResultsCache.get_processment_results(results_id)
+
+      is_error = Enum.any?(metrics.errors || [], fn e -> e.file == name end)
+      status = if is_error, do: :error, else: :warning
+
+      if socket.assigns.expanded_error_file == name do
+        # --- LOGIC TO CLOSE ---
+        file = %{id: name, name: name, status: status, detail: "Details closed"}
+
+        {:noreply,
+         socket
+         |> assign(expanded_error_file: nil, current_error_details: nil)
+         |> stream_insert(:files_stream, file)}
       else
-
-        results_id = socket.assigns.results_id
-        metrics = ResultsCache.get_processment_results(results_id)
-
-        file_in_list = Enum.find(socket.assigns.files, fn f -> f.name == name end)
-
+        # --- LOGIC TO OPEN ---
         details =
-          case file_in_list.status do
-            :warning ->
-              ext = name |> Path.extname() |> String.trim_leading(".") |> String.to_atom()
-              metrics
-              |> Map.get(ext, [])
-              |> Enum.find(%{}, fn f -> f.file == name end)
-              |> get_in([:metrics, :error_details])
-
-            :error ->
-              metrics.errors
-              |> Enum.find(%{}, fn e -> e.file == name end)
-              |> Map.get(:reason)
-
-            _ -> nil
+          if is_error do
+            Enum.find(metrics.errors, fn e -> e.file == name end).reason
+          else
+            ext = name |> Path.extname() |> String.trim_leading(".") |> String.to_atom()
+            metrics
+            |> Map.get(ext, [])
+            |> Enum.find(%{}, fn f -> f.file == name end)
+            |> get_in([:metrics, :error_details])
           end
 
-        {:noreply, assign(socket,
-          expanded_file: name,
-          current_error_details: details)}
+        file = %{id: name, name: name, status: status, detail: "Viewing details"}
+
+        {:noreply,
+         socket
+         |> assign(expanded_error_file: name, current_error_details: details)
+         |> stream_insert(:files_stream, file)}
       end
   end
 
@@ -169,6 +173,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
     }
 
     file = %{
+      id: payload.name,
       name: payload.name,
       status: payload.status,
       # Now we pass the reason to the UI for the Details inspector
@@ -180,7 +185,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:stats, new_stats)
       |> assign(:benchmark_stats, new_benchmark)
-      |> assign(:files, [file | socket.assigns.files])}
+      |> stream_insert(:files_stream, file)}
   end
 
   def handle_info(%{event: "all_done", payload: %{results: metrics_struct}}, socket) do

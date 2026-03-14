@@ -1,0 +1,42 @@
+<div class="max-w-4xl mx-auto p-8">
+
+  <.flash_messages flash={@flash} />
+
+  <h1 class="text-3xl font-bold mb-8 text-gray-800 tracking-tight italic">
+    File Processor Dashboard
+  </h1>
+
+  <.progress_bar
+    stats={@stats}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <.upload_form
+    uploads={@uploads}
+    mode={@mode}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <.metrics_dashboard
+    stats={@stats}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <.file_list
+    files={@files}
+    filter={@current_filter}
+    expanded_file={@expanded_file}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <.success_toast
+    stats={@stats}
+    total_rows={@total_rows}
+    all_done={@all_done}
+  />
+
+</div>

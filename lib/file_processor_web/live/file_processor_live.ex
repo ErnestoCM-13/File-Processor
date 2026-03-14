@@ -7,8 +7,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
   import FileProcessorWeb.FileListComponent
   import FileProcessorWeb.SuccessToastComponent
 
-  alias FileProcessor.Execution.Parallel
-
   @doc """
   Initializes the dashboard state and configures allowed file uploads.
   """
@@ -60,15 +58,15 @@ defmodule FileProcessorWeb.FileProcessorLive do
         {:ok, {dest, entry.client_name}}
       end)
 
-    workers = String.to_integer(Map.get(params, "workers", "4"))
-    timeout = String.to_integer(Map.get(params, "timeout", "5000"))
+    execution_mode = socket.assigns.mode
+    source_type = :list
+    config = %{
+      max_workers: String.to_integer(Map.get(params, "workers", "4")),
+      timeout: String.to_integer(Map.get(params, "timeout", "5000"))
+    }
 
     Task.start(fn ->
-      Parallel.run(
-        files,
-        %FileProcessor.Core.Metrics{},
-        %{max_workers: workers, timeout: timeout}
-      )
+      FileProcessor.process_files(execution_mode, source_type, files, config)
     end)
 
     {:noreply,
@@ -133,7 +131,15 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:files, [file | socket.assigns.files])}
   end
 
-  def handle_info(%{event: "all_done"}, socket) do
-    {:noreply, assign(socket, :all_done, true)}
+  def handle_info(%{event: "all_done", payload: %{results: metrics}}, socket) do
+    results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
+
+    FileProcessor.ResultsCache.put_processment_results(results_id, metrics)
+
+    {:noreply,
+      socket
+      |> assign(:results_id, results_id)
+      |> assign(:all_done, true)
+      |> assign(:final_metrics, metrics)}
   end
 end

@@ -40,6 +40,17 @@ Hooks.CountUp = {
   },
   updated() {
     this.animate()
+    const filter = this.el.dataset.filter;
+    const items = this.el.querySelectorAll('li[data-status]');
+    
+    items.forEach(item => {
+      const status = item.dataset.status;
+      if (filter === "all" || status === filter) {
+        item.classList.remove('hidden');
+      } else {
+        item.classList.add('hidden');
+      }
+    });
   },
   animate() {
     const target = parseInt(this.el.getAttribute("data-target"))

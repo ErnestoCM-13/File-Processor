@@ -4,6 +4,7 @@ defmodule FileProcessorWeb.ExecutiveSummaryComponent do
   It dynamically extracts all calculated values from the strategy structs.
   """
   use Phoenix.Component
+  alias Phoenix.LiveView.JS
 
   def executive_summary(assigns) do
     ~H"""

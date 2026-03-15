@@ -117,4 +117,18 @@
     display: contents;
 }
 
+/* Logic for dynamic filtering via CSS */
+
+/* When filter is NOT 'all', hide all items by default */
+ul[data-filter]:not([data-filter="all"]) .file-item {
+  display: none;
+}
+
+/* Then, show only the items that match the current filter */
+ul[data-filter="ok"] .file-item[data-status="ok"],
+ul[data-filter="warning"] .file-item[data-status="warning"],
+ul[data-filter="error"] .file-item[data-status="error"] {
+  display: flex !important;
+}
+
 /* This file is for your main application CSS */

@@ -1,43 +1,19 @@
 defmodule FileProcessorWeb.MetricsDashboardComponent do
   use Phoenix.Component
+
   alias FileProcessorWeb.DonutComponent
 
   def metrics_dashboard(assigns) do
-    mode = Map.get(assigns, :mode, :sequential)
-    all_stats = Map.get(assigns, :stats, %{})
+    target_mode = if assigns.mode == :sequential, do: :sequential, else: :parallel
 
-    # 1. Safe retrieval of benchmark_stats from assigns
-    benchmark_data = Map.get(assigns, :benchmark_stats, %{
-      sequential: %{processed: 0, errors: 0, warnings: 0},
-      parallel: %{processed: 0, errors: 0, warnings: 0}
-    })
+    display_stats = Map.get(assigns.stats, target_mode, %{total: 0, processed: 0, errors: 0, warnings: 0})
 
-    # 2. Extract specific stats for the main cards based on mode
-    current_engine_stats = if mode == :benchmark do
-      # During benchmark, we use Parallel as the main reference for top cards
-      get_in(benchmark_data, [:parallel]) || %{processed: 0, errors: 0}
-    else
-      Map.get(all_stats, mode, %{processed: 0, errors: 0, warnings: 0})
-    end
-
-    # 3. CRITICAL FIX: Get the total files count correctly
-    # Since @stats stores total inside the mode key (e.g., @stats.sequential.total)
-    total_files = get_in(all_stats, [mode, :total]) || 0
-
-    # 4. Consolidate display data
-    stats_for_display = %{
-      total: total_files,
-      processed: current_engine_stats[:processed] || 0,
-      errors: current_engine_stats[:errors] || 0,
-      warnings: current_engine_stats[:warnings] || 0
-    }
+    percentage = calculate_percentage(display_stats)
 
     assigns =
       assigns
-      |> assign(:display_stats, stats_for_display)
-      |> assign(:benchmark_data, benchmark_data)
-
-    IO.inspect(@display_stats, label: "DEBUG DISPLAY STATS")
+      |> assign(:display_stats, display_stats)
+      |> assign(:percentage, percentage)
 
     ~H"""
     <div
@@ -78,6 +54,13 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
         </div>
       </div>
 
+      <%!-- Donut component --%>
+      <.live_component
+        module={DonutComponent}
+        id="main-process-donut"
+        percentage={@percentage}
+      />
+
       <%!-- Benchmark Race Track Section --%>
       <div :if={@mode == :benchmark} class="col-span-full mt-4 p-6 bg-gray-900 rounded-2xl border border-gray-800 shadow-xl">
         <div class="flex items-center gap-2 mb-4">
@@ -86,16 +69,15 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-
           <%!-- Parallel Track --%>
           <div class="space-y-2">
             <div class="flex justify-between text-[9px] font-bold text-indigo-400 uppercase">
-              <span>Parallel (Multi-core)</span>
-              <span><%= @benchmark_data.parallel.processed %> / <%= @display_stats.total %></span>
+              <span>Parallel</span>
+              <span><%= @stats.parallel.processed %> / <%= @display_stats.total %></span>
             </div>
             <div class="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
               <div class="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.6)] transition-all duration-500"
-                style={"width: #{(@benchmark_data.parallel.processed / max(@display_stats.total, 1)) * 100}%"}></div>
+                style={"width: #{render_progress(@stats.parallel.processed, @display_stats.total)}%"}></div>
             </div>
           </div>
 
@@ -103,31 +85,34 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
           <div class="space-y-2">
             <div class="flex justify-between text-[9px] font-bold text-gray-500 uppercase">
               <span>Sequential</span>
-              <%!-- FIXED: Accessing total via @display_stats instead of @stats.total --%>
-              <span><%= @benchmark_data.sequential.processed %> / <%= @display_stats.total %></span>
+              <span><%= @stats.sequential.processed %> / <%= @display_stats.total %></span>
             </div>
             <div class="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
               <div class="h-full bg-amber-500 transition-all duration-500"
-                style={"width: #{(@benchmark_data.sequential.processed / max(@display_stats.total, 1)) * 100}%"}></div>
+                style={"width: #{render_progress(@stats.sequential.processed, @display_stats.total)}%"}></div>
             </div>
           </div>
-
         </div>
       </div>
-
-      <%!-- Donut component --%>
-      <.live_component
-        module={DonutComponent}
-        id={"donut-#{@mode}-#{@display_stats.processed}"}
-        percentage={
-          if @display_stats.total > 0 do
-            ((@display_stats.processed - @display_stats.errors) / @display_stats.total) * 100
-          else
-            0
-          end
-        }
-      />
     </div>
     """
+  end
+
+  # ------------------------
+  # HELPERS
+  # ------------------------
+
+  defp calculate_percentage(%{total: 0}), do: 0
+  defp calculate_percentage(%{total: total, processed: processed, errors: errors}) do
+    success_count = max(processed - errors, 0)
+    (success_count / total) * 100
+  end
+
+  defp render_progress(current, total) do
+    cond do
+      total <= 0 -> 0
+      current >= total -> 100
+      true -> (current / total) * 100
+    end
   end
 end

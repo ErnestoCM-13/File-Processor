@@ -134,7 +134,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:processing_started, false)
       |> assign(:current_filter, "all") # Reset filter to default
       |> assign(:files, [])
-      |> assign(:total_rows, 0)}
+      |> assign(:total_rows, 0)
+      |> assign(:stats, %{total: 0, processed: 0, errors: 0})}
 
   end
 

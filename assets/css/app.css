@@ -18,6 +18,7 @@
     --brand-success: #28a745; /* Green in "Improvement" Metrics */
 }
 
+
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.
    The heroicons installation itself is managed by your mix.exs */
 @plugin "../vendor/heroicons";
@@ -117,18 +118,18 @@
     display: contents;
 }
 
-/* Logic for dynamic filtering via CSS */
-
-/* When filter is NOT 'all', hide all items by default */
-ul[data-filter]:not([data-filter="all"]) .file-item {
-  display: none;
+@layer components{
+#files-stream-container[data-filter]:not([data-filter="all"]) li.file-item {
+  display: none !important;
 }
 
-/* Then, show only the items that match the current filter */
-ul[data-filter="ok"] .file-item[data-status="ok"],
-ul[data-filter="warning"] .file-item[data-status="warning"],
-ul[data-filter="error"] .file-item[data-status="error"] {
+/* 2. SHOW: Force reveal only if the status exactly matches the parent's filter */
+#files-stream-container[data-filter="ok"] li.file-item[data-status="ok"],
+#files-stream-container[data-filter="warning"] li.file-item[data-status="warning"],
+#files-stream-container[data-filter="error"] li.file-item[data-status="error"] {
   display: flex !important;
 }
+}
+/* Logic for dynamic filtering via CSS */
 
 /* This file is for your main application CSS */

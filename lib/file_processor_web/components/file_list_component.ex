@@ -1,20 +1,7 @@
 defmodule FileProcessorWeb.FileListComponent do
   use Phoenix.Component
-  alias Phoenix.LiveView.JS
 
-  defp filter_rows(js, "all") do
-    # Show everything inside the container
-    js |> JS.show(to: "#files-stream-container li", display: "block")
-  end
 
-  defp filter_rows(js, filter) do
-    js
-    # FIRST: Hide every single item in the list
-    |> JS.hide(to: "#files-stream-container li", transition: "fade-out")
-    # SECOND: Show only the ones that match the status
-    # We use the data-status attribute we added earlier
-    |> JS.show(to: "#files-stream-container li[data-status='#{filter}']", transition: "fade-in", display: "block")
-  end
   def file_list(assigns) do
     ~H"""
     <div :if={@processing_started or @all_done} class="bg-white rounded-2xl shadow-sm border overflow-hidden animate-in slide-in-from-bottom-4 duration-700">
@@ -31,9 +18,8 @@ defmodule FileProcessorWeb.FileListComponent do
           <%= for {label, filter_val} <- [{"All", "all"}, {"Completed", "ok"}, {"Warnings", "warning"}, {"Errors", "error"}] do %>
             <button
               type="button"
-              phx-click={
-                filter_rows(JS.push("set_filter", value: %{filter: filter_val}), filter_val)
-              }
+              phx-click="set_filter"
+              phx-value-filter={filter_val}
               class={"text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest transition-all duration-300 #{if @filter == filter_val, do: "bg-indigo-600 text-white shadow-lg", else: "bg-gray-100 text-gray-400 hover:bg-gray-200"}"}
             >
               <%= label %>
@@ -43,9 +29,11 @@ defmodule FileProcessorWeb.FileListComponent do
       </div>
 
       <%!-- FILE LIST --%>
-      <ul id="files-stream-container" phx-update="stream" phx-hook="FileListFilter" data-filter={@filter} class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto" phx-update="stream" id="files-stream">
+      <ul id="files-stream-container" phx-update="stream"  data-filter={@filter} class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto">
         <%= for {dom_id, file} <- @streams.files_stream do %>
-          <li id={dom_id} data-status={Atom.to_string(file.status)} class={["border-b border-gray-50 last:border-0 overflow-hidden transition-all duration-300"]}>
+          <li id={dom_id}
+            data-status={to_string(file.status)}
+            class="file-item border-b border-gray-50 last:border-0 overflow-hidden transition-all duration-300">
             <div class="p-5 flex justify-between items-center hover:bg-gray-50/50">
               <div class="flex items-center gap-3">
                 <div class={"w-2.5 h-2.5 rounded-full #{case file.status do
@@ -79,7 +67,7 @@ defmodule FileProcessorWeb.FileListComponent do
             </div>
 
             <%!-- ERRORS INSPECTOR --%>
-            <div :if={@expanded_error_file == file.name and @current_error_details} id={"details-#{dom_id}"} class="bg-red-50/50 px-12 py-4 border-t border-red-100">
+            <div :if={@expanded_error_file == file.name and @current_error_details} class="bg-red-50/50 px-12 py-4 border-t border-red-100">
               <div class="text-[11px] font-mono">
                 <%= if is_list(@current_error_details) do %>
                   <p class="text-indigo-700 font-bold mb-1 italic text-xs">Error lines:</p>

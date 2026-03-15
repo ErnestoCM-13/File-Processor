@@ -22,6 +22,15 @@ defmodule FileProcessorWeb.DashboardComponents do
   end
 
   def progress_bar(assigns) do
+    mode = Map.get(assigns, :mode, :sequential)
+    all_stats = Map.get(assigns, :stats, %{})
+
+    stats = if mode == :sequential do
+        Map.get(all_stats, :sequential, %{total: 0, processed: 0, errors: 0, warnings: 0})
+      else
+        Map.get(all_stats, :parallel, %{total: 0, processed: 0, errors: 0, warnings: 0})
+      end
+
     ~H"""
     <div :if={@processing_started and !@all_done} class="mb-6 animate-in fade-in duration-500">
       <div class="flex justify-between items-end mb-2">
@@ -30,18 +39,18 @@ defmodule FileProcessorWeb.DashboardComponents do
             System Analysis in Progress
           </span>
           <span class="text-2xl font-black text-gray-800">
-            <%= if @stats.total > 0, do: round((@stats.processed / @stats.total) * 100), else: 0 %>%
+            <%= if stats.total > 0, do: round((stats.processed / stats.total) * 100), else: 0 %>%
           </span>
         </div>
         <span class="text-xs font-bold text-gray-400 italic">
-          <%= @stats.processed %> / <%= @stats.total %> Files Analyzed
+          <%= stats.processed %> / <%= stats.total %> Files Analyzed
         </span>
       </div>
 
       <div class="h-3 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner border border-gray-50">
         <div
           class="h-full bg-indigo-600 transition-all duration-500 ease-out shadow-[0_0_15px_rgba(79,70,229,0.4)]"
-          style={"width: #{if @stats.total > 0, do: (@stats.processed / @stats.total) * 100, else: 0}%"}
+          style={"width: #{if stats.total > 0, do: (stats.processed / stats.total) * 100, else: 0}%"}
         >
           <div class="w-full h-full animate-pulse bg-white/20"></div>
         </div>

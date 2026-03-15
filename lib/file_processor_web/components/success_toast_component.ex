@@ -2,6 +2,15 @@ defmodule FileProcessorWeb.SuccessToastComponent do
   use Phoenix.Component
 
   def success_toast(assigns) do
+    mode = Map.get(assigns, :mode, :sequential)
+    all_stats = Map.get(assigns, :stats, %{})
+
+    stats = if mode == :sequential do
+        Map.get(all_stats, :sequential, %{total: 0, processed: 0, errors: 0, warnings: 0})
+      else
+        Map.get(all_stats, :parallel, %{total: 0, processed: 0, errors: 0, warnings: 0})
+      end
+
     ~H"""
     <div
       :if={@all_done}
@@ -15,15 +24,15 @@ defmodule FileProcessorWeb.SuccessToastComponent do
       <div class="mt-2 py-3 border-t border-gray-50 grid grid-cols-2 gap-2 text-center">
         <div class="flex flex-col">
           <span class="text-[9px] font-bold text-gray-400 uppercase">Total Items</span>
-          <span id="toast-total-rows" phx-hook="CountUp" data-target={@total_rows} class="text-lg font-black text-indigo-600">
-            <%= @total_rows %>
+          <span id="toast-total-rows" phx-hook="CountUp" data-target={stats.total} class="text-lg font-black text-indigo-600">
+            <%= stats.total %>
           </span>
         </div>
 
         <div class="flex flex-col">
           <span class="text-[9px] font-bold text-gray-400 uppercase">Files</span>
-          <span id="toast-files-count" phx-hook="CountUp" data-target={@stats.processed} class="text-lg font-black text-gray-700">
-            <%= @stats.processed %>
+          <span id="toast-files-count" phx-hook="CountUp" data-target={stats.processed} class="text-lg font-black text-gray-700">
+            <%= stats.processed %>
           </span>
         </div>
       </div>

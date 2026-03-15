@@ -24,7 +24,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:all_done, false)
       |> assign(:final_metrics, nil)
       |> assign(:mode, :sequential)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0})
+      |> assign(:stats, %{sequential: %{total: 0, processed: 0, errors: 0, warnings: 0}, parallel: %{total: 0, processed: 0, errors: 0, warnings: 0}})
       |> stream(:files_stream, [])
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
@@ -81,12 +81,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:processing_started, true)
       |> assign(:all_done, false)
       |> stream(:files_stream, [], reset: true)
-      |> assign(:stats, %{
-        total: Enum.count(files),
-        processed: 0,
-        errors: 0,
-        warnings: 0
-      })}
+      |> assign(:stats, %{sequential: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}, parallel: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}})
+    }
   end
 
   def handle_event("toggle_error_details", %{"name" => name}, socket) do
@@ -137,7 +133,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:processing_started, false)
       |> assign(:files, [])
       |> assign(:total_rows, 0)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0})}
+      |> assign(:stats, %{sequential: %{total: 0, processed: 0, errors: 0, warnings: 0}, parallel: %{total: 0, processed: 0, errors: 0, warnings: 0}})
+    }
   end
 
   # ------------------------
@@ -145,18 +142,18 @@ defmodule FileProcessorWeb.FileProcessorLive do
   # ------------------------
 
   def handle_info(%{event: "file_processed", payload: payload}, socket) do
-    # FIX: Use an internal counter instead of payload.current to ensure we reach 100%
-    new_processed_count = socket.assigns.stats.processed + 1
+    msg_mode = payload.mode
 
-    current_errors = socket.assigns.stats.errors || 0
-    current_warnings = socket.assigns.stats.warnings || 0
+    new_stats = update_in(socket.assigns.stats, [msg_mode], fn current ->
+      is_valid_processed = payload.status in [:ok, :warning]
+      new_processed_count = if is_valid_processed, do: current.processed + 1, else: current.processed
 
-    # FIX: Separate stats into 3 states (ok, warning, error)
-    {new_errors, new_warnings} = case payload.status do
-      :error   -> {current_errors + 1, current_warnings}
-      :warning -> {current_errors, current_warnings + 1}
-      _        -> {current_errors, current_warnings}
-    end
+      %{current |
+        processed: new_processed_count,
+        errors: if(payload.status == :error, do: current.errors + 1, else: current.errors),
+        warnings: if(payload.status == :warning, do: current.warnings + 1, else: current.warnings)
+      }
+    end)
 
     # UPDATE: Benchmark tracks logic
     new_benchmark = if socket.assigns.mode == :benchmark do
@@ -165,21 +162,13 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket.assigns.benchmark_stats
     end
 
-    new_stats = %{
-      total: payload.total,
-      processed: new_processed_count,
-      errors: new_errors,     # This MUST be the same key used in the card
-      warnings: new_warnings  # We should add this too
-    }
-
     file = %{
-      id: payload.name,
-      name: payload.name,
-      status: payload.status,
-      # Now we pass the reason to the UI for the Details inspector
-      reason: Map.get(payload, :reason, "Processed successfully."),
-      detail: "Engine: #{payload.mode}"
-    }
+        id: payload.name,
+        name: payload.name,
+        status: payload.status,
+        reason: Map.get(payload, :reason, "Processed successfully."),
+        detail: "Engine: #{payload.mode}"
+      }
 
     {:noreply,
       socket
@@ -188,8 +177,10 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> stream_insert(:files_stream, file)}
   end
 
+
   def handle_info(%{event: "all_done", payload: %{results: metrics_struct}}, socket) do
     metrics = Map.from_struct(metrics_struct)
+
     summary_map =
     if Map.has_key?(metrics, :executive_summary) and is_struct(metrics.executive_summary) do
       Map.from_struct(metrics.executive_summary)
@@ -197,8 +188,17 @@ defmodule FileProcessorWeb.FileProcessorLive do
       metrics[:executive_summary] || %{}
     end
 
+    current_mode =
+      if socket.assigns.mode == :sequential do
+        :sequential
+      else
+        :parallel
+      end
+
+    total_for_js = socket.assigns.stats[current_mode].total
     total_files = summary_map[:successfully_processed_files] || 0
     results_id = :crypto.strong_rand_bytes(16) |> Base.encode16()
+
     ResultsCache.put_processment_results(results_id, metrics)
 
     {:noreply,
@@ -209,7 +209,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:results_id, results_id)
       |> assign(:final_metrics, metrics)
       |> assign(:stats, socket.assigns.stats) # Refresh stats just in case
-      |> push_event("refresh_counters", %{total: socket.assigns.stats.total})}
+      |> push_event("refresh_counters", %{total: total_for_js})}
       rescue
       # 5. SAFETY NET: If something still fails, don't let the LiveView die
       e ->

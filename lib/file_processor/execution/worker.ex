@@ -33,6 +33,7 @@ defmodule FileProcessor.Execution.Worker do
     # Executes the processor module for the file
     result = processor_module.process(file_path)
 
+    Process.sleep(500)
     send(coordinator_pid, {:worker_done, self(), {file_path, file_name}, result})
   end
 end

@@ -6,6 +6,11 @@ defmodule FileProcessorWeb.DonutComponent do
   Documentation: The 'stroke-dasharray' calculation allows the circle
   to close in real-time based on the Success Rate.
   """
+
+  def update(assigns, socket) do
+    {:ok, assign(socket, assigns)}
+  end
+  
   def render(assigns) do
     # Stroke calculations for a radius of 15.9155
     # Circumference = 2 * pi * r ≈ 100

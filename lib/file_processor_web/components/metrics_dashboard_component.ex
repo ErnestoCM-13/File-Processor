@@ -15,7 +15,7 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
     # 2. Extract specific stats for the main cards based on mode
     current_engine_stats = if mode == :benchmark do
       # During benchmark, we use Parallel as the main reference for top cards
-      Map.get(benchmark_data, :parallel)
+      get_in(benchmark_data, [:parallel]) || %{processed: 0, errors: 0}
     else
       Map.get(all_stats, mode, %{processed: 0, errors: 0, warnings: 0})
     end
@@ -25,14 +25,19 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
     total_files = get_in(all_stats, [mode, :total]) || 0
 
     # 4. Consolidate display data
-    stats_for_display =
-      (current_engine_stats || %{processed: 0, errors: 0, warnings: 0})
-      |> Map.put(:total, total_files)
+    stats_for_display = %{
+      total: total_files,
+      processed: current_engine_stats[:processed] || 0,
+      errors: current_engine_stats[:errors] || 0,
+      warnings: current_engine_stats[:warnings] || 0
+    }
 
     assigns =
       assigns
       |> assign(:display_stats, stats_for_display)
       |> assign(:benchmark_data, benchmark_data)
+
+    IO.inspect(@display_stats, label: "DEBUG DISPLAY STATS")
 
     ~H"""
     <div
@@ -81,6 +86,19 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+          <%!-- Parallel Track --%>
+          <div class="space-y-2">
+            <div class="flex justify-between text-[9px] font-bold text-indigo-400 uppercase">
+              <span>Parallel (Multi-core)</span>
+              <span><%= @benchmark_data.parallel.processed %> / <%= @display_stats.total %></span>
+            </div>
+            <div class="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.6)] transition-all duration-500"
+                style={"width: #{(@benchmark_data.parallel.processed / max(@display_stats.total, 1)) * 100}%"}></div>
+            </div>
+          </div>
+
           <%!-- Sequential Track --%>
           <div class="space-y-2">
             <div class="flex justify-between text-[9px] font-bold text-gray-500 uppercase">
@@ -94,25 +112,20 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
             </div>
           </div>
 
-          <%!-- Parallel Track --%>
-          <div class="space-y-2">
-            <div class="flex justify-between text-[9px] font-bold text-indigo-400 uppercase">
-              <span>Parallel (Multi-core)</span>
-              <span><%= @benchmark_data.parallel.processed %> / <%= @display_stats.total %></span>
-            </div>
-            <div class="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
-              <div class="h-full bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.6)] transition-all duration-500"
-                style={"width: #{(@benchmark_data.parallel.processed / max(@display_stats.total, 1)) * 100}%"}></div>
-            </div>
-          </div>
         </div>
       </div>
 
       <%!-- Donut component --%>
       <.live_component
         module={DonutComponent}
-        id="success-donut"
-        percentage={if @display_stats.total > 0, do: ((@display_stats.processed - @display_stats.errors) / @display_stats.total) * 100, else: 0}
+        id={"donut-#{@mode}-#{@display_stats.processed}"}
+        percentage={
+          if @display_stats.total > 0 do
+            ((@display_stats.processed - @display_stats.errors) / @display_stats.total) * 100
+          else
+            0
+          end
+        }
       />
     </div>
     """

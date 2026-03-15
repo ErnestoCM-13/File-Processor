@@ -80,6 +80,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:processing_started, true)
       |> assign(:all_done, false)
+      |> assign(:current_filter, "all") # Ensure we are seeing "All" when starting
       |> stream(:files_stream, [], reset: true)
       |> assign(:stats, %{
         total: Enum.count(files),
@@ -135,9 +136,11 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:all_done, false)
       |> assign(:processing_started, false)
+      |> assign(:current_filter, "all") # Reset filter to default
       |> assign(:files, [])
       |> assign(:total_rows, 0)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0})}
+      |> assign(:stats, %{total: 0, processed: 0, errors: 0, warnings: 0})
+      |> stream(:files_stream, [], reset: true)} # Clear the list visually
   end
 
   # ------------------------

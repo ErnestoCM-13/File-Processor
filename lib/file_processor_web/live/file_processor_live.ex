@@ -10,6 +10,11 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
   alias FileProcessor.ResultsCache
 
+  @initial_stats %{
+    sequential: %{total: 0, processed: 0, errors: 0, warnings: 0},
+    parallel: %{total: 0, processed: 0, errors: 0, warnings: 0}
+  }
+
   @doc """
   Initializes the dashboard state and configures allowed file uploads.
   """
@@ -24,15 +29,11 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:all_done, false)
       |> assign(:final_metrics, nil)
       |> assign(:mode, :sequential)
-      |> assign(:stats, %{sequential: %{total: 0, processed: 0, errors: 0, warnings: 0}, parallel: %{total: 0, processed: 0, errors: 0, warnings: 0}})
+      |> assign(:stats, @initial_stats)
       |> stream(:files_stream, [])
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
       |> assign(:expanded_error_file, nil)
-      |> assign(:benchmark_stats, %{
-        sequential: %{processed: 0, errors: 0, warnings: 0},
-        parallel: %{processed: 0, errors: 0, warnings: 0}
-      })
       |> assign(:current_error_details, nil)
       |> assign(:results_id, nil)
       |> allow_upload(:files_input,
@@ -85,8 +86,9 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:all_done, false)
       |> assign(:current_filter, "all") # Ensure we are seeing "All" when starting
       |> stream(:files_stream, [], reset: true)
-      |> assign(:stats, %{sequential: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}, parallel: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}})
-      |> assign(:benchmark_stats, socket.assigns.benchmark_stats)
+      |> assign(:stats,
+        %{sequential: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0},
+          parallel: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}})
     }
   end
 
@@ -139,8 +141,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:current_filter, "all") # Reset filter to default
       |> assign(:files, [])
       |> assign(:total_rows, 0)
-      |> assign(:stats, %{total: 0, processed: 0, errors: 0})}
-
+      |> assign(:stats, @initial_stats)
+    }
   end
 
   # ------------------------
@@ -148,39 +150,26 @@ defmodule FileProcessorWeb.FileProcessorLive do
   # ------------------------
 
   def handle_info(%{event: "file_processed", payload: payload}, socket) do
-    msg_mode = payload.mode
+      new_stats = update_in(socket.assigns.stats, [payload.mode], fn current ->
+        %{current |
+          processed: current.processed + 1,
+          errors: if(payload.status == :error, do: current.errors + 1, else: current.errors),
+          warnings: if(payload.status == :warning, do: current.warnings + 1, else: current.warnings)
+        }
+      end)
 
-    new_stats = update_in(socket.assigns.stats, [msg_mode], fn current ->
-      is_valid_processed = payload.status in [:ok, :warning]
-      new_processed_count = if is_valid_processed, do: current.processed + 1, else: current.processed
-
-      %{current |
-        processed: new_processed_count,
-        errors: if(payload.status == :error, do: current.errors + 1, else: current.errors),
-        warnings: if(payload.status == :warning, do: current.warnings + 1, else: current.warnings)
-      }
-    end)
-
-    # UPDATE: Benchmark tracks logic
-    new_benchmark = if socket.assigns.mode == :benchmark do
-      update_in(socket.assigns.benchmark_stats, [payload.mode, :processed], fn current -> current + 1 end)
-    else
-      socket.assigns.benchmark_stats
-    end
-
-    file = %{
+      file = %{
         id: payload.name,
         name: payload.name,
         status: payload.status,
-        reason: Map.get(payload, :reason, "Processed successfully."),
+        reason: Map.get(payload, :reason, "OK"),
         detail: "Engine: #{payload.mode}"
       }
 
-    {:noreply,
-      socket
-      |> assign(:stats, new_stats)
-      |> assign(:benchmark_stats, new_benchmark)
-      |> stream_insert(:files_stream, file)}
+      {:noreply,
+       socket
+       |> assign(:stats, new_stats)
+       |> stream_insert(:files_stream, file)}
   end
 
 

@@ -29,7 +29,10 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:total_rows, 0)
       |> assign(:current_filter, "all")
       |> assign(:expanded_error_file, nil)
-      |> assign(:benchmark_stats, %{sequential: %{processed: 0}, parallel: %{processed: 0}})
+      |> assign(:benchmark_stats, %{
+        sequential: %{processed: 0, errors: 0, warnings: 0},
+        parallel: %{processed: 0, errors: 0, warnings: 0}
+      })
       |> assign(:current_error_details, nil)
       |> assign(:results_id, nil)
       |> allow_upload(:files_input,
@@ -83,6 +86,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:current_filter, "all") # Ensure we are seeing "All" when starting
       |> stream(:files_stream, [], reset: true)
       |> assign(:stats, %{sequential: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}, parallel: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0}})
+      |> assign(:benchmark_stats, socket.assigns.benchmark_stats)
     }
   end
 

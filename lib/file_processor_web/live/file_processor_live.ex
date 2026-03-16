@@ -170,6 +170,20 @@ defmodule FileProcessorWeb.FileProcessorLive do
     }
   end
 
+  def handle_event("download_report", _params, socket) do
+    case FileProcessor.ResultsCache.get_processment_results(socket.assigns.results_id) do
+      %{report: report_text} when is_binary(report_text) ->
+
+        timestamp = Calendar.strftime(DateTime.utc_now(), "%Y-%m-%d_%H-%M-%S")
+        filename = "Report_#{timestamp}.txt"
+
+        {:noreply, push_event(socket, "download_txt", %{content: report_text, filename: filename})}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Report not found in cache.")}
+    end
+  end
+
   # ------------------------
   # PUBSUB UPDATES
   # ------------------------

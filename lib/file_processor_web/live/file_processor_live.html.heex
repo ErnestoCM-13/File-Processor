@@ -2,9 +2,20 @@
 
   <.flash_messages flash={@flash} />
 
-  <h1 class="text-3xl font-bold mb-8 text-gray-200 tracking-tight italic">
-    File Processor Dashboard
-  </h1>
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="text-3xl font-bold text-gray-200 tracking-tight italic">
+      File Processor Dashboard
+    </h1>
+
+    <%= if @all_done and @results_id do %>
+      <button
+        phx-click="download_report"
+        class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-lg transition-all active:scale-95 animate-in fade-in slide-in-from-right-4"
+      >
+        Download Report (.txt)
+      </button>
+    <% end %>
+  </div>
 
   <.progress_bar
     stats={@stats}

@@ -137,14 +137,17 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
   def handle_event("reset_processor", _params, socket) do
     {:noreply,
-      socket
-      |> assign(:all_done, false)
-      |> assign(:processing_started, false)
-      |> assign(:current_file_list_filter, "all")
-      |> assign(:files, [])
-      |> assign(:total_rows, 0)
-      |> assign(:stats, @initial_stats)
-    }
+        socket
+        |> assign(:all_done, false)
+        |> assign(:processing_started, false)
+        |> assign(:current_filter, "all")
+        |> assign(:total_rows, 0)
+        |> assign(:results_id, nil)
+        |> assign(:final_metrics, nil)
+        |> assign(:stats, @initial_stats)
+        |> assign(:selected_file_name, nil)
+        |> stream(:files_stream, [], reset: true)
+        |> push_event("refresh_counters", %{total: 0})}
   end
 
   def handle_event("close_toast", _params, socket) do

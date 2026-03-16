@@ -31,11 +31,18 @@ defmodule FileProcessor.Execution.Notifier do
     end)
   end
 
-  def broadcast_completition(final_results, topic \\ @topic) do
+  def broadcast_completition(final_results, files, config, topic \\ @topic) do
+    delay_unit = Map.get(config, :visual_delay, 0)
+    total = length(files)
+    max_delay = total * delay_unit
 
-    FileProcessorWeb.Endpoint.broadcast(topic, "all_done", %{
-      results: final_results
-    })
+    Task.start(fn ->
+      if max_delay > 0, do: :timer.sleep(max_delay + 100)
+
+      FileProcessorWeb.Endpoint.broadcast(topic, "all_done", %{
+        results: final_results
+      })
+    end)
   end
 
   defp derive_status({:ok, _type, _name, %{errors_found: error_lines}}) when error_lines > 0, do: :warning

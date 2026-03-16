@@ -55,7 +55,7 @@ defmodule FileProcessor do
 
     final_results = generator.build(metrics, execution_mode, config)
 
-    Notifier.broadcast_completition(final_results)
+    Notifier.broadcast_completition(final_results, files, config)
 
     final_results
   end

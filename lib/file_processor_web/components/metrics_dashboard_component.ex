@@ -59,6 +59,7 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
         module={DonutComponent}
         id="main-process-donut"
         percentage={@percentage}
+        display_stats={@display_stats}
       />
 
       <%!-- Benchmark Race Track Section --%>

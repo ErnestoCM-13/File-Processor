@@ -76,18 +76,54 @@ defmodule FileProcessorWeb.UploadFormComponent do
           class={["grid gap-6 pt-4 animate-in fade-in slide-in-from-top-2",
                   if(@mode == :benchmark, do: "grid-cols-3", else: "grid-cols-2")]}
         >
+          <%!-- MAX WORKERS --%>
           <div class="space-y-2">
-            <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Max Workers</label>
+            <div class="flex items-center gap-2">
+              <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Max Workers</label>
+              <div class="group relative flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 cursor-help hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] leading-tight rounded-lg shadow-xl z-50">
+                  Defines the maximum number of simultaneous processes. The higher the number, the faster the processing speed. Parallel processing only.
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <input type="number" name="workers" value="4" min="1" max="100" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
           </div>
 
+          <%!-- TIMEOUT --%>
           <div class="space-y-2">
-            <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Timeout (ms)</label>
+            <div class="flex items-center gap-2">
+              <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Timeout (ms)</label>
+              <div class="group relative flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 cursor-help hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] leading-tight rounded-lg shadow-xl z-50">
+                  Maximum wait time to process files before marking them as an error. Parallel processing only.
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <input type="number" name="timeout" value="5000" step="500" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
           </div>
 
+          <%!-- VISUAL DELAY --%>
           <div :if={@mode == :benchmark} class="space-y-2 animate-in zoom-in-95 duration-300">
-            <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Visual Delay (ms)</label>
+            <div class="flex items-center gap-2">
+              <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Visual Delay (ms)</label>
+              <div class="group relative flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 cursor-help hover:text-indigo-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 text-white text-[10px] leading-tight rounded-lg shadow-xl z-50">
+                  Adds an artificial pause to better observe the speed difference between sequential and parallel processing in the graphical interface.
+                  <div class="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                </div>
+              </div>
+            </div>
             <input type="number" name="visual_delay" value="0" min="0" step="50" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
           </div>
         </div>

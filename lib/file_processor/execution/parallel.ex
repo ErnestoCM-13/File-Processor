@@ -69,7 +69,7 @@ defmodule FileProcessor.Execution.Parallel do
 
     state
     |> spawn_workers()
-    |> coordinator_loop(initial_metrics)
+    |> coordinator_loop(initial_metrics, config)
   end
 
   # ----------------------------------------------------------------------
@@ -110,7 +110,7 @@ defmodule FileProcessor.Execution.Parallel do
 
   @doc false
   # Main message loop. Handles worker completion, crashes, and timeouts.
-  defp coordinator_loop(state, accumulated_metrics) do
+  defp coordinator_loop(state, accumulated_metrics, config) do
     receive do
       # ----------------------------------------------------------------------
       # Worker completed successfully
@@ -122,12 +122,12 @@ defmodule FileProcessor.Execution.Parallel do
 
         print_progress(file_name, new_completed_count, state.total_files)
 
-        Notifier.broadcast_file_progress(:parallel, file_name, result_formatted, new_completed_count, state.total_files)
+        Notifier.broadcast_file_progress(:parallel, file_name, result_formatted, new_completed_count, state.total_files, config)
 
         state
         |> remove_worker(worker_pid)
         |> spawn_workers()
-        |> check_completion(new_completed_count, updated_metrics)
+        |> check_completion(new_completed_count, updated_metrics, config)
 
       # ----------------------------------------------------------------------
       # Worker crashed
@@ -142,14 +142,14 @@ defmodule FileProcessor.Execution.Parallel do
 
           IO.puts("Error: Worker for #{inspect(file_name)} crashed")
 
-          Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files)
+          Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files, config)
 
           state
           |> remove_worker(worker_pid)
           |> spawn_workers()
-          |> check_completion(new_completed_count, updated_metrics)
+          |> check_completion(new_completed_count, updated_metrics, config)
         else
-          coordinator_loop(state, accumulated_metrics)
+          coordinator_loop(state, accumulated_metrics, config)
         end
 
       # ----------------------------------------------------------------------
@@ -163,7 +163,7 @@ defmodule FileProcessor.Execution.Parallel do
             IO.puts("Error: Worker for #{inspect(file_name)} take too long")
             new_completed_count = state.completed_files + 1
             error_result = {:error, file_name, "Timeout exceeded"}
-            Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files)
+            Notifier.broadcast_file_progress(:parallel, file_name, error_result, new_completed_count, state.total_files, config)
             Metrics.add_result(
               acc,
               error_result)
@@ -185,7 +185,7 @@ defmodule FileProcessor.Execution.Parallel do
   @doc false
   # Checks if all files have been processed (successfully or with error).
   # Notifies the parent process or continues the loop.
-  defp check_completion(state, completed_files, accumulated_metrics) do
+  defp check_completion(state, completed_files, accumulated_metrics, config) do
     if completed_files == state.total_files do
       final_results =
         accumulated_metrics
@@ -198,7 +198,7 @@ defmodule FileProcessor.Execution.Parallel do
         %{state |
           completed_files: completed_files
         },
-        accumulated_metrics)
+        accumulated_metrics, config)
     end
   end
 

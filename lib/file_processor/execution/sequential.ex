@@ -51,7 +51,7 @@ defmodule FileProcessor.Execution.Sequential do
           format_result(name, {:error, reason})
       end
 
-      Notifier.broadcast_file_progress(:sequential, name, result_to_add, index, total)
+      Notifier.broadcast_file_progress(:sequential, name, result_to_add, index, total, config)
 
       Metrics.add_result(current_acc_metrics, result_to_add)
     end)

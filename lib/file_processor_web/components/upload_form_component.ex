@@ -67,17 +67,29 @@ defmodule FileProcessorWeb.UploadFormComponent do
           <% end %>
         </div>
 
-        <div :if={@mode != :sequential} class="grid grid-cols-2 gap-6 pt-4 animate-in fade-in slide-in-from-top-2">
+        <%!-- CONFIGURATION INPUTS --%>
+        <div
+          :if={@mode != :sequential}
+          class={["grid gap-6 pt-4 animate-in fade-in slide-in-from-top-2",
+                  if(@mode == :benchmark, do: "grid-cols-3", else: "grid-cols-2")]}
+        >
           <div class="space-y-2">
             <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Max Workers</label>
-            <input type="number" name="workers" value="4" min="1" max="10" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50 outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input type="number" name="workers" value="4" min="1" max="100" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
           </div>
+
           <div class="space-y-2">
             <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Timeout (ms)</label>
-            <input type="number" name="timeout" value="5000" step="500" class="w-full px-4 py-3 rounded-xl border-gray-100 bg-gray-50/50 outline-none focus:ring-2 focus:ring-indigo-500" />
+            <input type="number" name="timeout" value="5000" step="500" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
+          </div>
+
+          <div :if={@mode == :benchmark} class="space-y-2 animate-in zoom-in-95 duration-300">
+            <label class="block text-sm font-bold text-gray-700 uppercase tracking-widest">Visual Delay (ms)</label>
+            <input type="number" name="visual_delay" value="0" min="0" step="50" class="w-full px-4 py-3 rounded-xl border border-gray-300 bg-gray-50/50 text-gray-900 outline-none focus:ring-2 focus:ring-indigo-500 transition-all" />
           </div>
         </div>
 
+        <%!-- SUBMIT BUTTON --%>
         <button
           type="submit"
           disabled={@processing_started or Enum.empty?(@uploads.files_input.entries)}

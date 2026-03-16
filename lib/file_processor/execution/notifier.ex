@@ -6,19 +6,33 @@ defmodule FileProcessor.Execution.Notifier do
 
   @topic "processor_updates"
 
-  def broadcast_file_progress(mode, file_name, result_formated, current, total, topic \\ @topic) do
-    status = derive_status(result_formated)
+  def broadcast_file_progress(mode, file_name, result_formated, current, total, config) do
+    delay_unit = Map.get(config, :visual_delay, 0)
+    max_workers = Map.get(config, :max_workers, 1)
 
-    Endpoint.broadcast(topic, "file_processed", %{
-      mode: mode,
-      name: file_name,
-      status: status,
-      current: current,
-      total: total
-    })
+    effective_delay =
+      if mode == :parallel do
+        batch_index = div(current - 1, max_workers) + 1
+        batch_index * delay_unit
+      else
+        current * delay_unit
+      end
+
+    Task.start(fn ->
+      if effective_delay > 0, do: :timer.sleep(effective_delay)
+
+      FileProcessorWeb.Endpoint.broadcast(@topic, "file_processed", %{
+        mode: mode,
+        name: file_name,
+        status: derive_status(result_formated),
+        current: current,
+        total: total
+      })
+    end)
   end
 
   def broadcast_completition(final_results, topic \\ @topic) do
+
     FileProcessorWeb.Endpoint.broadcast(topic, "all_done", %{
       results: final_results
     })

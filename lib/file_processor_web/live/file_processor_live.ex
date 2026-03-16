@@ -73,7 +73,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
     source_type = :list
     config = %{
       max_workers: String.to_integer(Map.get(params, "workers", "4")),
-      timeout: String.to_integer(Map.get(params, "timeout", "5000"))
+      timeout: String.to_integer(Map.get(params, "timeout", "5000")),
+      visual_delay: String.to_integer(Map.get(params, "visual_delay", "0"))
     }
 
     Task.start(fn ->

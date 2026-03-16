@@ -6,7 +6,7 @@ defmodule FileProcessor.Execution.Notifier do
 
   @topic "processor_updates"
 
-  def broadcast_file_progress(mode, file_name, result_formated, current, total, config) do
+  def broadcast_file_progress(mode, file_name, result_formated, current, total, config, topic \\ @topic) do
     delay_unit = Map.get(config, :visual_delay, 0)
     max_workers = Map.get(config, :max_workers, 1)
 
@@ -21,7 +21,7 @@ defmodule FileProcessor.Execution.Notifier do
     Task.start(fn ->
       if effective_delay > 0, do: :timer.sleep(effective_delay)
 
-      Endpoint.broadcast(@topic, "file_processed", %{
+      Endpoint.broadcast(topic, "file_processed", %{
         mode: mode,
         name: file_name,
         status: derive_status(result_formated),

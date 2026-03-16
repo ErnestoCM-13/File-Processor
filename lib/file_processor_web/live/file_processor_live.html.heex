@@ -20,12 +20,17 @@
     all_done={@all_done}
   />
 
-  <.metrics_dashboard
-    stats={@stats}
-    processing_started={@processing_started}
-    all_done={@all_done}
-    mode={@mode}
-  />
+  <%= if @processing_started or @all_done do %>
+    <.live_component
+      module={FileProcessorWeb.MetricsDashboardComponent}
+      id="metrics-dashboard"
+      stats={@stats}
+      processing_started={@processing_started}
+      all_done={@all_done}
+      mode={@mode}
+      results_id={@results_id}
+    />
+  <% end %>
 
   <.file_list
     id="my-file-list"
@@ -46,7 +51,7 @@
   <%= if @processing_started or @all_done do %>
     <.live_component
       module={FileProcessorWeb.DetailedReportComponent}
-      id="detailed-report-component"
+      id="detailed-report"
       results_id={@results_id}
       current_file_details_filter={@current_file_details_filter}
       selected_file={@selected_file_name}

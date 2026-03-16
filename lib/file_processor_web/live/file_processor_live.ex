@@ -36,6 +36,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:expanded_error_file, nil)
       |> assign(:current_error_details, nil)
       |> assign(:results_id, nil)
+      |> assign(:show_toast, false)
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
@@ -146,6 +147,10 @@ defmodule FileProcessorWeb.FileProcessorLive do
     }
   end
 
+  def handle_event("close_toast", _params, socket) do
+    {:noreply, assign(socket, show_toast: false)}
+  end
+
   # ------------------------
   # PUBSUB UPDATES
   # ------------------------
@@ -197,6 +202,8 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
     ResultsCache.put_processment_results(results_id, metrics)
 
+    Process.send_after(self(), :hide_toast, 6000)
+
     {:noreply,
       socket
       |> assign(:all_done, true)
@@ -205,11 +212,16 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:results_id, results_id)
       |> assign(:final_metrics, metrics)
       |> assign(:stats, socket.assigns.stats) # Refresh stats just in case
+      |> assign(show_toast: true)
       |> push_event("refresh_counters", %{total: total_for_js})}
       rescue
       # 5. SAFETY NET: If something still fails, don't let the LiveView die
       e ->
         IO.inspect(e, label: "CRITICAL ERROR IN ALL_DONE")
         {:noreply, assign(socket, :all_done, true)}
+  end
+
+  def handle_info(:hide_toast, socket) do
+    {:noreply, assign(socket, show_toast: false)}
   end
 end

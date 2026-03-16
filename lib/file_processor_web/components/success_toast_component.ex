@@ -2,44 +2,37 @@ defmodule FileProcessorWeb.SuccessToastComponent do
   use Phoenix.Component
 
   def success_toast(assigns) do
-    mode = Map.get(assigns, :mode, :sequential)
-    all_stats = Map.get(assigns, :stats, %{})
-
-    stats = if mode == :sequential do
-        Map.get(all_stats, :sequential, %{total: 0, processed: 0, errors: 0, warnings: 0})
-      else
-        Map.get(all_stats, :parallel, %{total: 0, processed: 0, errors: 0, warnings: 0})
-      end
-
     ~H"""
     <div
-      :if={@all_done}
+      :if={@show_toast}
       id="success-toast"
-      class="fixed top-8 right-8 z-50 flex flex-col gap-2 p-5 bg-white border-l-4 border-green-500 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] animate-in slide-in-from-right-8 fade-in duration-500 w-80"
+      class="fixed top-8 right-8 z-50 flex items-center gap-4 p-4 bg-white border border-gray-100 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] animate-in slide-in-from-right-8 fade-in duration-500 min-w-[320px]"
     >
-      <p class="text-sm font-black text-gray-800 tracking-tight italic">
-        Batch Analysis Complete
-      </p>
-
-      <div class="mt-2 py-3 border-t border-gray-50 grid grid-cols-2 gap-2 text-center">
-        <div class="flex flex-col">
-          <span class="text-[9px] font-bold text-gray-400 uppercase">Total Items</span>
-          <span id="toast-total-rows" phx-hook="CountUp" data-target={stats.total} class="text-lg font-black text-indigo-600">
-            <%= stats.total %>
-          </span>
-        </div>
-
-        <div class="flex flex-col">
-          <span class="text-[9px] font-bold text-gray-400 uppercase">Files</span>
-          <span id="toast-files-count" phx-hook="CountUp" data-target={stats.processed} class="text-lg font-black text-gray-700">
-            <%= stats.processed %>
-          </span>
-        </div>
+      <%!-- Icono de Éxito --%>
+      <div class="flex-shrink-0 w-10 h-10 bg-green-50 rounded-full flex items-center justify-center text-green-500">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+        </svg>
       </div>
 
-      <%!-- CLOSE BUTTON --%>
-      <button onclick="this.parentElement.remove()" class="absolute top-2 right-2 text-gray-300 hover:text-gray-500">
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+      <%!-- Contenido --%>
+      <div class="flex-grow">
+        <p class="text-sm font-black text-gray-800 tracking-tight">
+          File processing Complete
+        </p>
+        <p class="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+          Files processed
+        </p>
+      </div>
+
+      <%!-- Botón de Cierre (Controlado por LiveView) --%>
+      <button
+        phx-click="close_toast"
+        class="text-gray-300 hover:text-gray-500 transition-colors p-1"
+      >
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
     </div>
     """

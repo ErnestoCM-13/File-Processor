@@ -1,0 +1,64 @@
+<div class="max-w-4xl mx-auto p-8">
+
+  <div class="flex items-center justify-between mb-8">
+    <h1 class="text-3xl font-bold text-gray-200 tracking-tight italic">
+      File Processor Dashboard
+    </h1>
+
+    <%= if @all_done and @results_id do %>
+      <button
+        phx-click="download_report"
+        class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-lg transition-all active:scale-95 animate-in fade-in slide-in-from-right-4"
+      >
+        Download Report (.txt)
+      </button>
+    <% end %>
+  </div>
+
+  <.upload_form
+    uploads={@uploads}
+    mode={@mode}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <%= if @processing_started or @all_done do %>
+    <.live_component
+      module={FileProcessorWeb.MetricsDashboardComponent}
+      id="metrics-dashboard"
+      stats={@stats}
+      processing_started={@processing_started}
+      all_done={@all_done}
+      mode={@mode}
+      results_id={@results_id}
+    />
+  <% end %>
+
+  <.file_list
+    id="my-file-list"
+    streams={@streams}
+    file_list_filter={@current_file_list_filter}
+    processing_started={@processing_started}
+    all_done={@all_done}
+  />
+
+  <.success_toast
+    stats={@stats}
+    total_rows={@total_rows}
+    all_done={@all_done}
+    mode={@mode}
+    show_toast={@show_toast}
+  />
+
+  <%= if @processing_started or @all_done do %>
+    <.live_component
+      module={FileProcessorWeb.DetailedReportComponent}
+      id="detailed-report"
+      results_id={@results_id}
+      current_file_details_filter={@current_file_details_filter}
+      selected_file={@selected_file_name}
+      expanded_error_file={@expanded_error_file}
+      current_error_details={@current_error_details}
+    />
+  <% end %>
+</div>

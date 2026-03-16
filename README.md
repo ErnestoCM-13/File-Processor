@@ -1,58 +1,66 @@
-***
-
 # File Processor 🚀
 
 ## Description
 
-A high-performance file processing system built with **Elixir** and **Phoenix**. It is designed to analyze, validate, and extract metrics from **CSV**, **JSON**, and **LOG** files.  
-The system supports multiple execution strategies (Sequential and Parallel) and includes a built-in **Benchmark** mode to compare performance metrics such as execution time and memory usage.
+A high-performance file processing system built with **Elixir** and **Phoenix**. Designed to analyze, validate, and extract metrics from **CSV**, **JSON**, and **LOG** files.  
 
-Now featuring a modern **Web Interface** built with **Phoenix LiveView** for a seamless user experience.
+The system has evolved from a standard web app to a **Real-Time Reactive Dashboard** powered by **Phoenix LiveView**, offering a seamless experience where processing and visualization occur simultaneously via persistent connections.
 
-***
+---
+
+## New Feature: LiveView Dashboards
+
+The system now features a fully reactive architecture using **Phoenix.PubSub**:
+
+* **Total Interactivity:** Eliminated "wait and redirect" flows. Results appear instantly as they are generated.
+* **Unified Metrics Dashboard:** Errors and successes are integrated into a single view with contextual inspection, avoiding the confusion of multiple pages.
+* **Dynamic Visualizations:**
+    * **Live Donut Chart:** A real-time component showing the Success vs. Error ratio.
+    * **Animated Count-Up Cards:** Metrics (Total, Processed, Warning, Errors) that update.
+    * **Live Benchmark:** Visual "race" between Sequential and Parallel modes.
+* **Contextual Error Inspector:** View line-by-line validation errors directly in the file list without page reloads using a dedicated "View Reason" interface.
+
+---
 
 ## Key Features
 
-*   **Multi-format Support:** Specialized processors for CSV, JSON, and LOG files.
-*   **Hybrid Execution:** Choose between sequential processing or highly concurrent parallel processing using Elixir's OTP lightweight processes.
-*   **Robust Error Tracking:** Detailed logging of malformed lines, validation errors, and file system issues.
-*   **Comprehensive Reporting:** Generates human-readable summaries and consolidated metrics.
-*   **Web Dashboard:** Upload and process files directly from your browser.
-*   **Advanced Benchmarking:** Real-time comparison between processing modes to visualize the *Elixir advantage*.
+* **Multi-format Support:** Specialized validators for CSV, JSON, and LOG files.
+* **Hybrid Execution:** Choose between Sequential or Parallel processing using Elixir's lightweight processes.
+* **Execution Control:** Configurable timeouts and worker management via `spawn_monitor` to detect and handle crashes gracefully.
+* **Results Cache:** High-speed in-memory storage using Elixir `Agents` for real-time performance.
+* **Filterable Progress Stream:** Real-time file list with quick filters (All, Completed, Warnings, Errors).
 
-***
+---
 
-## Technical Objectives (Delivery 3)
+## Technical Architecture
 
-*   **Fault Tolerance:** Uses `spawn_monitor` and process monitors to detect and gracefully handle worker crashes.
-*   **Execution Control:** Implements configurable timeouts per process to prevent system hangs during heavy workloads.
-*   **Resilience:** Automatic retry mechanism for transient processing failures.
-*   **Enhanced Analytics:** Performance analysis including speedup factors and memory peak tracking.
+* **Parallel and Sequential Processing:** Now non-blocking. They broadcasts events via **PubSub** whenever a file is processed.
+* **LiveView Process:** Subscribes to processing events, updating the UI state without full-page refreshes.
+* **Fault Tolerance:** Uses process monitors and blind-data handling in components to ensure the system remains stable even during heavy workloads or malformed data.
 
-***
+---
 
 ## Project Structure
-
     file_processor/
+    ├── data/                       # Sample datasets
+    │   ├── error/                  # Corrupt files for edge-case testing
+    │   └── valid/                  # Standard CSV, JSON, and LOG files
     ├── lib/
-    │   ├── file_processor/        # Core business logic
-    │   │   ├── csv_processor.ex
-    │   │   ├── json_processor.ex
-    │   │   ├── log_processor.ex
-    │   │   ├── report.ex           # Report generation engine
-    │   │   └── executable.ex       # CLI logic
-    │   ├── file_processor_web/     # Phoenix Web Interface
-    │   │   ├── controllers/
-    │   │   ├── components/
-    │   │   └── endpoint.ex
-    │   ├── parallel/               # Concurrency management
-    │   │   ├── coordinator.ex      # Task orchestrator
-    │   │   └── worker.ex           # Unit of work
-    │   ├── file_processor.ex       # Main entry point
-    │   └── benchmark.ex            # Performance measurement
-    ├── test/                       # Full ExUnit test suite
-    ├── data/                       # Sample datasets (valid and corrupt)
-    └── output/                     # Generated text reports
+    │   ├── file_processor/         # Core Logic & Concurrency
+    │   │   ├── core/               # Dispatcher and Metrics definitions
+    │   │   ├── execution/          # Strategies: Parallel, Sequential, Benchmark
+    │   │   ├── formats/            # File parsers (CSV, JSON, LOG)
+    │   │   ├── report/             # Text report generation
+    │   │   └── results_cache.ex    # In-memory Agent storage
+    │   └── file_processor_web/     # Phoenix LiveView Interface
+    │       ├── components/         # Reactive UI (DonutChart, UploadForm, etc.)
+    │       ├── live/               # LiveView Controllers (Real-time updates)
+    │       └── endpoint.ex
+    ├── priv/                       # Database migrations and static assets
+    ├── test/                       # Comprehensive Test Suite
+    │   ├── file_processor/         # Unit tests for core logic
+    │   └── file_processor_web/     # Integration tests for LiveView
+    └── mix.exs                     # Project configuration and dependencies
 
 ***
 
@@ -80,12 +88,6 @@ mix phx.server
 
 Visit: **<http://localhost:4000>**
 
-### 3. Build the CLI Executable
-
-```bash
-mix escript.build
-```
-
 ***
 
 ## Usage
@@ -99,36 +101,9 @@ mix escript.build
 
 ***
 
-## Command Line Interface
-
-The `file_processor` executable supports:
-
-| Flag                   | Description                            |
-| ---------------------- | -------------------------------------- |
-| `-h`, `--help`         | Show usage guide                       |
-| `-d --dir <path>`      | Process all files in a directory       |
-| `-f --files <p1> <p2>` | Process a specific list of file paths  |
-| `-p --parallel`        | Enable parallel processing             |
-| `-b --benchmark`       | Run both modes and compare performance |
-| `-t --timeout <ms>`    | Set timeout (default: 10000ms)         |
-
-### CLI Examples
-
-```bash
-# Process a directory in parallel
-./file_processor -d data/valid -p
-```
-
-```bash
-# Run a benchmark comparison
-./file_processor --files sales.csv logs.log -b
-```
-
-***
-
 ## Testing
 
-The project maintains a high standard of quality with **50+ automated tests** covering edge cases, crash recovery, and data validation.
+The project maintains a high standard of quality with an automatic test suite, covering edge cases, crash recovery, and data validation, which verify full processing flow from upload to report generation.
 
 Run tests:
 
@@ -158,8 +133,6 @@ mix test
 
 ***
 
-Developed with **Elixir & Phoenix**.
+Built with **Elixir & Phoenix LiveView**.
 
 ***
-
-

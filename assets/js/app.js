@@ -26,19 +26,76 @@ import { hooks as colocatedHooks } from "phoenix-colocated/file_processor";
 import topbar from "../vendor/topbar";
 import "../vendor/daisyui.js";
 
-const csrfToken = document
-  .querySelector("meta[name='csrf-token']")
-  .getAttribute("content");
-const liveSocket = new LiveSocket("/live", Socket, {
-  longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
-  hooks: { ...colocatedHooks },
-});
-
 // Show progress bar on live navigation and form submits
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+
+// Documentation: Handles the animated counting effect for dashboard metrics
+// as results flow in via PubSub.
+let Hooks = {};
+Hooks.CountUp = {
+    mounted() {
+        this.animate();
+    },
+    updated() {
+        this.animate();
+        const filter = this.el.dataset.filter;
+        const items = this.el.querySelectorAll("li[data-status]");
+
+        items.forEach((item) => {
+            const status = item.dataset.status;
+            if (filter === "all" || status === filter) {
+                item.classList.remove("hidden");
+            } else {
+                item.classList.add("hidden");
+            }
+        });
+    },
+    animate() {
+        const target = parseInt(this.el.getAttribute("data-target"));
+        const current = parseInt(this.el.innerText) || 0;
+        const duration = 1000; // Animation lasts 1 second
+        const stepTime = 50;
+
+        if (current < target) {
+            const increment = Math.ceil(
+                (target - current) / (duration / stepTime),
+            );
+            const timer = setInterval(() => {
+                const now = parseInt(this.el.innerText) || 0;
+                if (now >= target) {
+                    this.el.innerText = target;
+                    clearInterval(timer);
+                } else {
+                    this.el.innerText = now + increment;
+                }
+            }, stepTime);
+        }
+    },
+};
+
+const csrfToken = document
+    .querySelector("meta[name='csrf-token']")
+    .getAttribute("content");
+const liveSocket = new LiveSocket("/live", Socket, {
+    longPollFallbackMs: 2500,
+    params: { _csrf_token: csrfToken },
+    hooks: { ...colocatedHooks, ...Hooks },
+});
+
+// Download report
+window.addEventListener("phx:download_txt", (e) => {
+    const blob = new Blob([e.detail.content], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = e.detail.filename;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+});
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
@@ -56,37 +113,37 @@ window.liveSocket = liveSocket;
 //     2. click on elements to jump to their definitions in your code editor
 //
 if (process.env.NODE_ENV === "development") {
-  window.addEventListener(
-    "phx:live_reload:attached",
-    ({ detail: reloader }) => {
-      // Enable server log streaming to client.
-      // Disable with reloader.disableServerLogs()
-      reloader.enableServerLogs();
+    window.addEventListener(
+        "phx:live_reload:attached",
+        ({ detail: reloader }) => {
+            // Enable server log streaming to client.
+            // Disable with reloader.disableServerLogs()
+            reloader.enableServerLogs();
 
-      // Open configured PLUG_EDITOR at file:line of the clicked element's HEEx component
-      //
-      //   * click with "c" key pressed to open at caller location
-      //   * click with "d" key pressed to open at function component definition location
-      let keyDown;
-      window.addEventListener("keydown", (e) => (keyDown = e.key));
-      window.addEventListener("keyup", (_e) => (keyDown = null));
-      window.addEventListener(
-        "click",
-        (e) => {
-          if (keyDown === "c") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            reloader.openEditorAtCaller(e.target);
-          } else if (keyDown === "d") {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            reloader.openEditorAtDef(e.target);
-          }
+            // Open configured PLUG_EDITOR at file:line of the clicked element's HEEx component
+            //
+            //   * click with "c" key pressed to open at caller location
+            //   * click with "d" key pressed to open at function component definition location
+            let keyDown;
+            window.addEventListener("keydown", (e) => (keyDown = e.key));
+            window.addEventListener("keyup", (_e) => (keyDown = null));
+            window.addEventListener(
+                "click",
+                (e) => {
+                    if (keyDown === "c") {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        reloader.openEditorAtCaller(e.target);
+                    } else if (keyDown === "d") {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        reloader.openEditorAtDef(e.target);
+                    }
+                },
+                true,
+            );
+
+            window.liveReloader = reloader;
         },
-        true,
-      );
-
-      window.liveReloader = reloader;
-    },
-  );
+    );
 }

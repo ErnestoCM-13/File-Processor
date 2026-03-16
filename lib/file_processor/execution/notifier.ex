@@ -21,7 +21,7 @@ defmodule FileProcessor.Execution.Notifier do
     Task.start(fn ->
       if effective_delay > 0, do: :timer.sleep(effective_delay)
 
-      FileProcessorWeb.Endpoint.broadcast(@topic, "file_processed", %{
+      Endpoint.broadcast(@topic, "file_processed", %{
         mode: mode,
         name: file_name,
         status: derive_status(result_formated),
@@ -39,7 +39,7 @@ defmodule FileProcessor.Execution.Notifier do
     Task.start(fn ->
       if max_delay > 0, do: :timer.sleep(max_delay + 100)
 
-      FileProcessorWeb.Endpoint.broadcast(topic, "all_done", %{
+      Endpoint.broadcast(topic, "all_done", %{
         results: final_results
       })
     end)

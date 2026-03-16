@@ -1,6 +1,5 @@
 defmodule FileProcessorWeb.DetailedReportComponent do
   use FileProcessorWeb, :live_component
-  alias Phoenix.LiveView.JS
   alias FileProcessor.ResultsCache
 
   def update(assigns, socket) do

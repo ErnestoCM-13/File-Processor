@@ -1,7 +1,5 @@
 <div class="max-w-4xl mx-auto p-8">
 
-  <.flash_messages flash={@flash} />
-
   <div class="flex items-center justify-between mb-8">
     <h1 class="text-3xl font-bold text-gray-200 tracking-tight italic">
       File Processor Dashboard
@@ -16,13 +14,6 @@
       </button>
     <% end %>
   </div>
-
-  <.progress_bar
-    stats={@stats}
-    processing_started={@processing_started}
-    all_done={@all_done}
-    mode={@mode}
-  />
 
   <.upload_form
     uploads={@uploads}

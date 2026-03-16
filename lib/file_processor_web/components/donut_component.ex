@@ -78,9 +78,9 @@ defmodule FileProcessorWeb.DonutComponent do
   end
 
   defp calculate_segments(stats) do
-    total = stats.processed
+    total = stats.total
 
-    ok_percentage = (stats.processed - stats.warnings - stats.errors) / total * 100
+    ok_percentage = (stats.total - stats.warnings - stats.errors) / total * 100
     warn_percentage = stats.warnings / total * 100
     err_percentage = stats.errors / total * 100
 

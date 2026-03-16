@@ -1,9 +1,7 @@
 defmodule FileProcessorWeb.FileProcessorLive do
   use FileProcessorWeb, :live_view
 
-  import FileProcessorWeb.DashboardComponents
   import FileProcessorWeb.UploadFormComponent
-  import FileProcessorWeb.MetricsDashboardComponent
   import FileProcessorWeb.FileListComponent
   import FileProcessorWeb.SuccessToastComponent
 
@@ -26,7 +24,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:processing_started, false)
       |> assign(:all_done, false)
-      |> assign(:final_metrics, nil)
       |> assign(:mode, :sequential)
       |> assign(:stats, @initial_stats)
       |> stream(:files_stream, [])
@@ -143,7 +140,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
         |> assign(:current_filter, "all")
         |> assign(:total_rows, 0)
         |> assign(:results_id, nil)
-        |> assign(:final_metrics, nil)
         |> assign(:stats, @initial_stats)
         |> assign(:selected_file_name, nil)
         |> stream(:files_stream, [], reset: true)
@@ -191,7 +187,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
   def handle_info(%{event: "file_processed", payload: payload}, socket) do
       new_stats = update_in(socket.assigns.stats, [payload.mode], fn current ->
         %{current |
-          processed: current.processed + 1,
+          processed: if(payload.status == :ok, do: current.processed + 1, else: current.processed),
           errors: if(payload.status == :error, do: current.errors + 1, else: current.errors),
           warnings: if(payload.status == :warning, do: current.warnings + 1, else: current.warnings)
         }
@@ -202,7 +198,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
         name: payload.name,
         status: payload.status,
         reason: Map.get(payload, :reason, "OK"),
-        detail: "Engine: #{payload.mode}"
+        detail: "Engine: #{socket.assigns.mode}"
       }
 
       {:noreply,
@@ -243,7 +239,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:processing_started, true)
       |> assign(:total_rows, total_files)
       |> assign(:results_id, results_id)
-      |> assign(:final_metrics, metrics)
       |> assign(:stats, socket.assigns.stats) # Refresh stats just in case
       |> assign(show_toast: true)
       |> push_event("refresh_counters", %{total: total_for_js})}

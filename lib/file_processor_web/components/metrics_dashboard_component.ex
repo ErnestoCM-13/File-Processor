@@ -48,8 +48,8 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <%!-- Tracks --%>
           <div class="lg:col-span-2 space-y-6">
-            <.race_track label="Parallel" current={@stats.parallel.processed} total={@display_stats.total} color="bg-indigo-500" />
-            <.race_track label="Sequential" current={@stats.sequential.processed} total={@display_stats.total} color="bg-amber-500" />
+            <.race_track label="Parallel" current={@stats.parallel.processed + @stats.parallel.warnings + @stats.parallel.errors} total={@display_stats.total} color="bg-indigo-500" />
+            <.race_track label="Sequential" current={@stats.sequential.processed + @stats.sequential.warnings + @stats.sequential.errors} total={@display_stats.total} color="bg-amber-500" />
           </div>
 
           <%!-- Performance Panel --%>
@@ -157,7 +157,10 @@ defmodule FileProcessorWeb.MetricsDashboardComponent do
   end
 
   defp calculate_percentage(%{total: 0}), do: 0
-  defp calculate_percentage(%{total: t, processed: p, errors: e}), do: (max(p - e, 0) / t) * 100
+  defp calculate_percentage(%{total: total, warnings: _warnings, errors: errors}) do
+    processed = max(total - errors, 0)
+    processed * 100 / total
+  end
 
   defp render_progress(0, _), do: 0
   defp render_progress(c, t) when c >= t, do: 100

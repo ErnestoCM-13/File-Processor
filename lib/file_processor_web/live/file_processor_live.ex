@@ -6,7 +6,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
   import FileProcessorWeb.MetricsDashboardComponent
   import FileProcessorWeb.FileListComponent
   import FileProcessorWeb.SuccessToastComponent
-  import FileProcessorWeb.ExecutiveSummaryComponent
 
   alias FileProcessor.ResultsCache
 
@@ -32,11 +31,13 @@ defmodule FileProcessorWeb.FileProcessorLive do
       |> assign(:stats, @initial_stats)
       |> stream(:files_stream, [])
       |> assign(:total_rows, 0)
-      |> assign(:current_filter, "all")
+      |> assign(:current_file_list_filter, "all")
       |> assign(:expanded_error_file, nil)
       |> assign(:current_error_details, nil)
       |> assign(:results_id, nil)
       |> assign(:show_toast, false)
+      |> assign(:selected_file_name, nil)
+      |> assign(:current_file_details_filter, "all")
       |> allow_upload(:files_input,
         accept: ~w(.csv .json .log),
         max_entries: 20,
@@ -86,7 +87,6 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:processing_started, true)
       |> assign(:all_done, false)
-      |> assign(:current_filter, "all") # Ensure we are seeing "All" when starting
       |> stream(:files_stream, [], reset: true)
       |> assign(:stats,
         %{sequential: %{total: Enum.count(files), processed: 0, errors: 0, warnings: 0},
@@ -132,7 +132,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
   end
 
   def handle_event("set_filter", %{"filter" => filter}, socket) do
-    {:noreply, assign(socket, :current_filter, filter)}
+    {:noreply, assign(socket, :current_file_list_filter, filter)}
   end
 
   def handle_event("reset_processor", _params, socket) do
@@ -140,7 +140,7 @@ defmodule FileProcessorWeb.FileProcessorLive do
       socket
       |> assign(:all_done, false)
       |> assign(:processing_started, false)
-      |> assign(:current_filter, "all") # Reset filter to default
+      |> assign(:current_file_list_filter, "all")
       |> assign(:files, [])
       |> assign(:total_rows, 0)
       |> assign(:stats, @initial_stats)
@@ -149,6 +149,22 @@ defmodule FileProcessorWeb.FileProcessorLive do
 
   def handle_event("close_toast", _params, socket) do
     {:noreply, assign(socket, show_toast: false)}
+  end
+
+  def handle_event("set_report_filter", %{"filter" => f}, socket) do
+    {:noreply, assign(socket, current_file_details_filter: f, selected_file_name: nil)}
+  end
+
+  def handle_event("clear_file_filter", _, socket) do
+    {:noreply, assign(socket, selected_file_name: nil, current_file_details_filter: "all")}
+  end
+
+  def handle_event("select_file_for_report", %{"name" => name}, socket) do
+    {:noreply,
+      socket
+      |> assign(:current_file_details_filter, "all")
+      |> assign(:selected_file_name, name)
+    }
   end
 
   # ------------------------

@@ -30,11 +30,9 @@
   <.file_list
     id="my-file-list"
     streams={@streams}
-    filter={@current_filter}
-    expanded_error_file={@expanded_error_file}
+    file_list_filter={@current_file_list_filter}
     processing_started={@processing_started}
     all_done={@all_done}
-    current_error_details={@current_error_details}
   />
 
   <.success_toast
@@ -45,10 +43,15 @@
     show_toast={@show_toast}
   />
 
-  <%= if @all_done and @final_metrics do %>
-    <.executive_summary
-      all_done={@all_done}
-      final_metrics={@final_metrics}
+  <%= if @processing_started or @all_done do %>
+    <.live_component
+      module={FileProcessorWeb.DetailedReportComponent}
+      id="detailed-report-component"
+      results_id={@results_id}
+      current_file_details_filter={@current_file_details_filter}
+      selected_file={@selected_file_name}
+      expanded_error_file={@expanded_error_file}
+      current_error_details={@current_error_details}
     />
   <% end %>
 </div>

@@ -15,10 +15,10 @@ defmodule FileProcessorWeb.DetailedReportComponent do
 
   def render(assigns) do
     ~H"""
-    <div id="detailed-report-section" class="mt-12 space-y-6">
+    <div id="detailed-report-section" class="mt-12 space-y-6 bg-white rounded-2xl">
       <%!-- HEADER --%>
-      <div class="flex items-center justify-between border-b border-gray-100 pb-4">
-        <h2 class="text-lg font-black text-gray-800 italic uppercase tracking-tight">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4 p-4">
+        <h2 class="font-bold text-gray-800 text-lg tracking-tight italic text-blue-900">
           Analysis Details
         </h2>
 

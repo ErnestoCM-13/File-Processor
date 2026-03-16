@@ -37,7 +37,10 @@ defmodule FileProcessorWeb.UploadFormComponent do
           </div>
 
           <%!-- UPLOAD QUEUE --%>
-          <div id="upload-queue" class="space-y-2 mt-4">
+          <div
+            id="upload-queue"
+            class="space-y-2 mt-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-visible"
+          >
             <%= for entry <- @uploads.files_input.entries do %>
               <div id={"entry-#{entry.ref}"} class="flex items-center justify-between p-3 bg-white border border-gray-100 rounded-xl shadow-sm animate-in slide-in-from-left-2">
                 <div class="flex items-center gap-3">

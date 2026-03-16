@@ -29,7 +29,7 @@ defmodule FileProcessorWeb.FileListComponent do
       </div>
 
       <%!-- FILE LIST --%>
-      <ul id="files-stream-container" phx-update="stream"  data-filter={@file_list_filter} class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto">
+      <ul id="files-stream-container" phx-update="stream"  data-filter={@file_list_filter} class="divide-y divide-gray-50 max-h-[400px] overflow-y-auto lib/file_processor_web/components/file_list_component.ex">
         <%= for {dom_id, file} <- @streams.files_stream do %>
           <li id={dom_id}
             data-status={to_string(file.status)}

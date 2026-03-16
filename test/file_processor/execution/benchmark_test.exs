@@ -9,7 +9,6 @@ defmodule FileProcessor.Execution.BenchmarkTest do
 
   defmodule FakeSequential do
     def run(_files, _metrics, config) do
-      # Simulamos una carga de trabajo controlada
       Process.sleep(config[:sleep_seq] || 10)
 
       %Metrics{
@@ -21,7 +20,6 @@ defmodule FileProcessor.Execution.BenchmarkTest do
 
   defmodule FakeParallel do
     def run(_files, _metrics, config) do
-      # Simulamos que el paralelo es más rápido
       Process.sleep(config[:sleep_par] || 5)
 
       %Metrics{
@@ -49,14 +47,11 @@ defmodule FileProcessor.Execution.BenchmarkTest do
 
       result = Benchmark.run(files, initial_metrics, config)
 
-      # Verificamos comportamiento observable en el resultado final
       assert %Metrics{} = result
-      perf = result.performance # Asumiendo que Metrics guarda esto aquí
+      perf = result.performance
 
       assert perf.processes == 4
       assert perf.max_processes_used == 4
-
-      # El factor de mejora debería estar cerca de 2.0 (permitiendo una pequeña latencia de CPU)
       assert perf.improvement >= 1.5
       assert perf.sequential_time > perf.parallel_time
     end
